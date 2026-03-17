@@ -138,6 +138,86 @@ imageModal.addEventListener('click', (e) => {
     }
 });
 
+// Modal Download Button
+document.getElementById('modal-download').addEventListener('click', async () => {
+    const imgSrc = document.getElementById('modal-img').src;
+    try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `CipherNet_Image_${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch(e) {
+        // Fallback: open in new tab
+        window.open(imgSrc, '_blank');
+    }
+});
+
+// Modal Copy Button
+document.getElementById('modal-copy').addEventListener('click', async () => {
+    const imgSrc = document.getElementById('modal-img').src;
+    const copyBtn = document.getElementById('modal-copy');
+    try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+            new ClipboardItem({ [blob.type]: blob })
+        ]);
+        copyBtn.classList.add('copied');
+        copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+        }, 2000);
+    } catch(e) {
+        alert('Copy failed. Try downloading instead.');
+    }
+});
+
+// Helper: Create image action buttons (download, copy, view)
+function createImageActions(url, imgElement) {
+    const bar = document.createElement('div');
+    bar.classList.add('img-actions-bar');
+
+    const dlBtn = document.createElement('button');
+    dlBtn.classList.add('img-action-btn');
+    dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Save';
+    dlBtn.addEventListener('click', () => {
+        const a = document.createElement('a');
+        a.href = url; a.download = `CipherNet_Image_${Date.now()}.png`;
+        a.click();
+    });
+
+    const cpBtn = document.createElement('button');
+    cpBtn.classList.add('img-action-btn');
+    cpBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+    cpBtn.addEventListener('click', async () => {
+        try {
+            const resp = await fetch(url);
+            const blob = await resp.blob();
+            await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+            cpBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+            setTimeout(() => { cpBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; }, 1500);
+        } catch(e) { alert('Copy failed'); }
+    });
+
+    const viewBtn = document.createElement('button');
+    viewBtn.classList.add('img-action-btn');
+    viewBtn.innerHTML = '<i class="fa-solid fa-expand"></i> View';
+    viewBtn.addEventListener('click', () => {
+        document.getElementById('modal-img').src = url;
+        imageModal.classList.add('show');
+    });
+
+    bar.appendChild(viewBtn);
+    bar.appendChild(dlBtn);
+    bar.appendChild(cpBtn);
+    return bar;
+}
+
 // Sound Effects (Feature 6)
 let soundEnabled = true;
 const toggleSoundBtn = document.getElementById('toggle-sound');
@@ -361,13 +441,31 @@ function renderReceivedFileMessage(meta, url) {
     messageElement.appendChild(headerRow);
 
     if (isImage) {
+        // View-once: image is blurred behind overlay, click to reveal once
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('view-once-wrapper');
+
         const img = document.createElement('img');
         img.src = url; img.classList.add('chat-image');
-        img.addEventListener('click', () => {
-            document.getElementById('modal-img').src = url;
-            document.getElementById('image-modal').classList.add('show');
+
+        const overlay = document.createElement('div');
+        overlay.classList.add('view-once-overlay');
+        overlay.innerHTML = '<i class="fa-solid fa-eye"></i><span>View Once</span>';
+        overlay.addEventListener('click', () => {
+            overlay.remove();
+            // Auto-expire after 10 seconds
+            setTimeout(() => {
+                wrapper.classList.add('view-once-opened');
+                img.style.filter = 'blur(15px)';
+            }, 10000);
         });
-        messageElement.appendChild(img);
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(overlay);
+        messageElement.appendChild(wrapper);
+
+        // Action buttons below image
+        messageElement.appendChild(createImageActions(url, img));
     } else if (meta.mimeType.startsWith('audio/')) {
         const audio = document.createElement('audio');
         audio.controls = true; audio.src = url; audio.classList.add('voice-audio');
@@ -375,7 +473,7 @@ function renderReceivedFileMessage(meta, url) {
     } else {
         const link = document.createElement('a');
         link.href = url; link.download = meta.name; link.classList.add('file-link');
-        link.innerHTML = `<i class="fa-solid fa-file"></i> ${meta.name}`;
+        link.innerHTML = `<i class="fa-solid fa-download"></i> ${meta.name}`;
         messageElement.appendChild(link);
     }
     
@@ -453,13 +551,18 @@ async function sendFileP2P(file) {
 
         if (isImage) {
             const img = document.createElement('img'); img.src = url; img.classList.add('chat-image');
+            img.addEventListener('click', () => {
+                document.getElementById('modal-img').src = url;
+                document.getElementById('image-modal').classList.add('show');
+            });
             messageElement.appendChild(img);
+            messageElement.appendChild(createImageActions(url, img));
         } else if (file.type.startsWith('audio/')) {
             const audio = document.createElement('audio'); audio.controls = true; audio.src = url; audio.classList.add('voice-audio');
             messageElement.appendChild(audio);
         } else {
             const link = document.createElement('a'); link.href = url; link.download = file.name; link.classList.add('file-link');
-            link.innerHTML = `<i class="fa-solid fa-file"></i> ${file.name}`;
+            link.innerHTML = `<i class="fa-solid fa-download"></i> ${file.name}`;
             messageElement.appendChild(link);
         }
         messagesDiv.appendChild(messageElement);
