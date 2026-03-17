@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CipherNet - Decentralized Secure Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Base styles for emoji picker web component */
+        emoji-picker {
+            position: absolute;
+            bottom: 70px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+            --background: rgba(10, 20, 15, 0.95);
+            --border-size: 1px;
+            --border-color: var(--primary);
+            --num-columns: 8;
+            --emoji-size: 1.5rem;
+            --indicator-color: var(--primary);
+            --button-hover-background: rgba(0, 255, 65, 0.2);
+            --category-font-color: var(--primary);
+            --search-background: rgba(0, 0, 0, 0.5);
+            --search-focus-border-color: var(--primary);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,255,65,0.2);
+        }
+        emoji-picker.show {
+            display: block;
+        }
+    </style>
+</head>
+<body data-theme="green">
+    <div class="matrix-bg"></div>
+
+    <div class="matrix-bg"></div>
+
+    <!-- Audio Element for Sounds -->
+    <audio id="sound-msg-in" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+    <audio id="sound-join" src="https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3" preload="auto"></audio>
+
+    <div class="container">
+        <!-- Landing Page Wrapper -->
+        <div class="landing-page secure-panel" id="landing-page">
+            <!-- Settings shortcut on landing page -->
+            <button class="landing-settings-btn icon-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
+            <!-- Sleek Splash Hero Intro -->
+            <div id="landing-hero" class="landing-hero fade-in">
+                <div class="hero-icon-container">
+                    <i class="fa-solid fa-earth-americas fa-spin-pulse"></i>
+                </div>
+                <h1 class="logo glow-text">CipherNet</h1>
+                <p class="tagline">Decentralized. Untraceable. Peer-to-Peer.</p>
+                <p class="sub-tagline">Enter the secure network protocol.</p>
+                <button id="start-hero-btn" class="btn premium-btn cyber-hover">INITIALIZE PROTOCOL <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+
+            <!-- Session Flow (Hidden by default until Hero clicked) -->
+            <div class="session-form hidden" id="session-form-container">
+                <div class="form-header">
+                    <h2>Session Setup</h2>
+                    <p>Select your entry vector below.</p>
+                </div>
+
+                <!-- Main Menu Options -->
+                <div id="main-buttons" class="slide-up">
+                    <button id="show-create-form" class="btn primary-btn cyber-btn"><i class="fa-solid fa-plus-circle"></i> Initialize Host Node</button>
+                    <button id="show-join-form" class="btn secondary-btn"><i class="fa-solid fa-network-wired"></i> Join Existing Node</button>
+                    <button id="back-to-hero" class="btn ghost-btn text-muted"><i class="fa-solid fa-chevron-left"></i> Back</button>
+                </div>
+
+                <!-- Create Session -->
+                <div id="create-session-form" class="hidden inner-panel slide-up">
+                    <h3 class="form-title">Host Configuration</h3>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-server"></i>
+                        <input type="text" id="session-name" placeholder="Network Identity" required>
+                    </div>
+                    
+                    <div class="duration-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="infinity-session">
+                            <span class="checkmark"></span>
+                            Persistent Node
+                        </label>
+                        <div class="input-wrapper" id="duration-wrapper">
+                            <i class="fa-regular fa-clock"></i>
+                            <input type="number" id="session-duration" placeholder="TTL (mins)" required>
+                        </div>
+                    </div>
+                    
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user-secret"></i>
+                        <input type="text" id="creator-name" placeholder="Your Alias" required>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="create-session" class="btn primary-btn cyber-hover"><i class="fa-solid fa-key"></i> Generate Genesis Block</button>
+                        <button id="back-to-main" class="btn secondary-btn"><i class="fa-solid fa-arrow-left"></i> Go Back</button>
+                    </div>
+                </div>
+
+                <!-- Join Session -->
+                <div id="join-session-form" class="hidden inner-panel slide-up">
+                    <h3 class="form-title">Connect to Network</h3>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-unlock-keyhole"></i>
+                        <input type="text" id="session-code" placeholder="Enter Initialization Vector (Code)" maxlength="20" required>
+                    </div>
+                    
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user-secret"></i>
+                        <input type="text" id="participant-name" placeholder="Your Alias" required>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="join-session" class="btn primary-btn cyber-hover"><i class="fa-solid fa-link"></i> Handshake & Connect</button>
+                        <button id="back-to-main-join" class="btn secondary-btn"><i class="fa-solid fa-arrow-left"></i> Abort</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container secure-panel hidden" id="chat-container">
+            <div class="chat-header">
+                <div class="header-info">
+                    <h2><i class="fa-solid fa-bolt"></i> P2P Active</h2>
+                    <span class="e2ee-badge" title="No centralized storage. Data flows directly between browsers."><i class="fa-solid fa-satellite-dish"></i> WebRTC Data Channel</span>
+                </div>
+                <!-- Actions -->
+                <div class="header-actions">
+                    <button id="open-settings" class="icon-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
+                    <button id="toggle-participants" class="icon-btn" title="View Nodes"><i class="fa-solid fa-users"></i></button>
+                    <button id="toggle-sound" class="icon-btn active-icon" title="Toggle Sound"><i class="fa-solid fa-volume-high"></i></button>
+                    <button id="toggle-notifs" class="icon-btn" title="Browser Notifications"><i class="fa-solid fa-bell-slash"></i></button>
+                    <button id="export-chat" class="icon-btn" title="Export Log"><i class="fa-solid fa-download"></i></button>
+                    <button id="clear-screen" class="icon-btn" title="Wipe Local Screen"><i class="fa-solid fa-broom"></i></button>
+                    
+                    <span id="current-user-display" class="user-badge"><i class="fa-solid fa-terminal"></i> <span id="current-user-name">Alias</span></span>
+                    <button id="exit-chat" class="btn danger-btn"><i class="fa-solid fa-power-off"></i> Terminate</button>
+                </div>
+            </div>
+
+            <!-- Main Layout (List + Messages) -->
+            <div class="chat-body-layout">
+                <!-- Participants Drawer -->
+                <div id="participants-drawer" class="participants-drawer hidden">
+                    <h3>Active Nodes (<span id="node-count">1</span>)</h3>
+                    <ul id="participants-list">
+                        <!-- Populated dynamically -->
+                    </ul>
+                </div>
+
+                <!-- Messages Area -->
+                <div class="messages-wrapper">
+                    <div class="messages" id="messages">
+                        <!-- Messages populate here -->
+                    </div>
+                    <div id="typing-indicator" class="typing-indicator hidden">
+                        <i class="fa-solid fa-keyboard fa-fade"></i> <span id="typing-text">Someone is typing...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-upload-indicator hidden" id="upload-indicator">
+                <i class="fa-solid fa-satellite-dish fa-spin"></i> Streaming P2P Payload... <span id="transfer-progress">0%</span>
+            </div>
+
+            <div id="reply-preview" class="reply-preview hidden">
+                <div class="reply-content">
+                    <span class="reply-to">Replying to: <span id="reply-to-name"></span></span>
+                    <span class="reply-text" id="reply-to-text"></span>
+                </div>
+                <button id="cancel-reply" class="icon-btn cancel-reply"><i class="fa-solid fa-times"></i></button>
+            </div>
+
+            <!-- Input area without Broadcast dropdown -->
+            <div class="chat-input-area">
+                <div class="input-action-wrapper cyber-border" style="width:100%">
+                    
+                    <button id="record-audio-btn" class="icon-btn audio-btn" title="Hold to Voice Memo"><i class="fa-solid fa-microphone"></i></button>
+                    
+                    <label for="file-upload" class="icon-btn file-upload-btn" title="Stream File (P2P)">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </label>
+                    <input type="file" id="file-upload" class="hidden-file-input">
+                    
+                    <input type="text" id="message-input" placeholder="Enter transmission payload...">
+                    
+                    <!-- Emoji Picker Toggle -->
+                    <button id="toggle-emoji" class="icon-btn emoji-btn" title="Emojis"><i class="fa-regular fa-face-smile"></i></button>
+                    <!-- Floating Picker -->
+                    <emoji-picker id="emoji-picker"></emoji-picker>
+                    
+                    <!-- Self-Destruct Timer Toggle -->
+                    <button id="toggle-burn" class="icon-btn burn-btn" title="Self-Destruct (30s) [OFF]"><i class="fa-solid fa-fire"></i></button>
+
+                    <button id="send-message" class="btn primary-btn send-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="image-modal hidden">
+        <div class="modal-content settings-content">
+            <div class="settings-header">
+                <h2><i class="fa-solid fa-sliders"></i> Configuration</h2>
+                <span class="close-settings">&times;</span>
+            </div>
+            
+            <div class="settings-section">
+                <h3>UI Theme</h3>
+                <div class="theme-grid">
+                    <button class="theme-btn" data-color="green"><span class="color-dot" style="background:#00FF41;"></span> Matrix Green</button>
+                    <button class="theme-btn" data-color="blue"><span class="color-dot" style="background:#00E5FF;"></span> Neon Blue</button>
+                    <button class="theme-btn" data-color="purple"><span class="color-dot" style="background:#B000FF;"></span> Cyber Purple</button>
+                    <button class="theme-btn" data-color="red"><span class="color-dot" style="background:#FF1744;"></span> Hacker Red</button>
+                    <button class="theme-btn" data-color="bw"><span class="color-dot" style="background:#FFFFFF; border:1px solid #000;"></span> Monochrome (B&W)</button>
+                    <button class="theme-btn" data-color="notes"><span class="color-dot" style="background:#FDF6E3; border:1px solid #CCC;"></span> Notepad (Light)</button>
+                    <button class="theme-btn" data-color="whatsapp"><span class="color-dot" style="background:#25D366;"></span> WhatsApp Classic</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="image-modal" class="image-modal hidden">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="modal-img">
+    </div>
+
+    <!-- WebRTC Adatper (optional safety net for older browsers, though native is fine now) -->
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
