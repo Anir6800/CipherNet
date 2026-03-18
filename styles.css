@@ -384,10 +384,15 @@ input:focus + i { color: var(--primary); }
 .recording { animation: blinkRed 1s infinite; color: var(--danger) !important; }
 .burn-active { color: var(--danger) !important;}
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: translateY(0);} }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes wobble { 0%, 100% { transform: rotate(0deg);} 25% { transform: rotate(-2deg);} 50% { transform: rotate(2deg);} 75% { transform: rotate(-1deg);} }
+@keyframes pulseStrong { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
 @keyframes blinkRed { 0% {color: var(--danger);} 50% {color: transparent;} 100% {color: var(--danger);} }
+
+.premium-btn, .primary-btn, .secondary-btn, .danger-btn { animation: pulseStrong 3s ease-in-out infinite alternate; }
+.premium-btn:hover, .primary-btn:hover, .secondary-btn:hover, .danger-btn:hover { animation: wobble 0.6s ease-in-out 1; }
 
 .progress-bar-container {
     width: 100%;
@@ -497,7 +502,45 @@ input:focus + i { color: var(--primary); }
     border-color: #93A1A1;
 }
 [data-theme="notes"] .chat-input-area {
-    background: #EEE8D5;
+    background: #EEE8D5;}
+
+/* Mobile responsiveness improvements */
+@media (max-width: 900px) {
+    .container { padding: 1rem; max-width: 100%; }
+    .secure-panel { padding: 1.2rem; border-radius: 0.75rem; }
+    .landing-page { min-height: inherit; padding: 1.2rem; width: 100%; }
+    .landing-hero { gap: 10px; }
+    .logo { font-size: 2rem; }
+    .tagline { font-size: 0.95rem; }
+    .sub-tagline { font-size: 0.8rem; }
+    .premium-btn { padding: 12px 18px; font-size: 0.95rem; }
+    .chat-container { height: 100vh; border-radius: 0; }
+    .chat-header { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+    .header-actions { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+    .chat-body-layout { flex-direction: column; }
+    .participants-drawer { width: 100%; position: relative; transform: none !important; height: auto; }
+    .messages { padding: 1rem; }
+    .message { max-width: 100%; }
+    .chat-input-area { padding: 0.75rem; }
+    .input-action-wrapper { gap: 0.4rem; }
+    #message-input { font-size: 0.9rem; }
+    .icon-btn, .btn { font-size: 0.78rem; }
+}
+
+@media (max-width: 600px) {
+    .header-info h2 { font-size: 1rem; }
+    .e2ee-badge { font-size: 0.62rem; }
+    .user-badge { font-size: 0.7rem; }
+    .participants-drawer { display: none; }
+    #toggle-participants { display: inline-flex; }
+    .chat-body-layout { flex-direction: column; }
+    .input-action-wrapper { padding: 0.15rem; }
+    .message-text { font-size: 0.85rem; }
+    .message-header-row { font-size: 0.7rem; }
+    .chat-upload-indicator { font-size: 0.75rem; }
+    .settings-content { width: 90%; padding: 1rem; }
+}
+
     border-top-color: #93A1A1;
 }
 [data-theme="notes"] .send-btn {

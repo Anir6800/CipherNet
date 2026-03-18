@@ -283,12 +283,40 @@ let isHost = false;
 let peerConnection = null;
 let dataChannel = null;
 let signalingRef = null;
+let pendingIceCandidates = [];
+let isOfferInProgress = false;
 
 const rtcConfig = {
     iceServers: [
         { urls: "stun:stun.l.google.com:19302" }
     ]
 };
+
+function flushPendingIceCandidates() {
+    if (!peerConnection || !peerConnection.remoteDescription || !pendingIceCandidates.length) return;
+    while (pendingIceCandidates.length) {
+        const ice = pendingIceCandidates.shift();
+        peerConnection.addIceCandidate(new RTCIceCandidate(ice)).catch(err => console.warn('Deferred ICE candidate error', err));
+    }
+}
+
+async function waitForDataChannelOpen(timeoutMs = 10000) {
+    if (dataChannel && dataChannel.readyState === 'open') return true;
+    return new Promise(resolve => {
+        const start = Date.now();
+
+        const check = () => {
+            if (dataChannel && dataChannel.readyState === 'open') {
+                resolve(true); return;
+            }
+            if (Date.now() - start >= timeoutMs) {
+                resolve(false); return;
+            }
+            setTimeout(check, 150);
+        };
+        check();
+    });
+}
 
 function setupWebRTC(sessionCode) {
     peerConnection = new RTCPeerConnection(rtcConfig);
@@ -315,15 +343,27 @@ function setupWebRTC(sessionCode) {
         }
     };
 
+    peerConnection.onconnectionstatechange = () => {
+        console.log('Connection state:', peerConnection.connectionState);
+        if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
+            console.warn('P2P connection lost, retrying.');
+            // Try once to regenerate offer on host
+            if (isHost && !isOfferInProgress) {
+                createOffer(sessionCode);
+            }
+        }
+    };
+
     // Listen for signaling data (Offers, Answers, ICE) via RTDB
     signalingRef = ref(database, `sessions/${sessionCode}/signaling`);
     onChildAdded(signalingRef, async (snapshot) => {
         const data = snapshot.val();
-        if (data.sender === currentUserName) return; // Ignore own signaling
+        if (data.sender === currentUserName) return;
 
         try {
             if (data.type === 'offer' && !isHost) {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.offer)));
+                flushPendingIceCandidates();
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 push(ref(database, `sessions/${sessionCode}/signaling`), {
@@ -334,14 +374,19 @@ function setupWebRTC(sessionCode) {
             } else if (data.type === 'answer' && isHost) {
                 if (peerConnection.signalingState !== 'stable') {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.answer)));
+                    flushPendingIceCandidates();
                 }
             } else if (data.type === 'request_offer' && isHost) {
-                if (peerConnection.signalingState === 'stable' || peerConnection.signalingState === 'have-local-offer') {
+                if (peerConnection.connectionState !== 'connected' && !isOfferInProgress) {
                     createOffer(sessionCode);
                 }
-            } else if (data.type === 'candidate' && peerConnection.remoteDescription) {
-                // Buffer candidates if remoteDescription isn't set yet ideally, but usually fast enough
-                await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(data.candidate)));
+            } else if (data.type === 'candidate') {
+                const iceCandidate = JSON.parse(data.candidate);
+                if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidate));
+                } else {
+                    pendingIceCandidates.push(iceCandidate);
+                }
             }
         } catch (e) {
             console.error("WebRTC Signaling Error", e);
@@ -352,7 +397,7 @@ function setupWebRTC(sessionCode) {
         // We add a tiny delay to allow the guest to mount their listener
         setTimeout(() => createOffer(sessionCode), 1500);
     } else {
-        // If not host, trigger host to re-send offer if it was missed
+        // If not host, trigger host to resend offer if it was missed
         push(ref(database, `sessions/${sessionCode}/signaling`), {
             sender: currentUserName,
             type: 'request_offer'
@@ -361,15 +406,29 @@ function setupWebRTC(sessionCode) {
 }
 
 async function createOffer(sessionCode) {
-    // Only host creates offers
-    if(!isHost) return;
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    push(ref(database, `sessions/${sessionCode}/signaling`), {
-        sender: currentUserName,
-        type: 'offer',
-        offer: JSON.stringify(offer)
-    });
+    if (!isHost || !peerConnection) return;
+    try {
+        isOfferInProgress = true;
+
+        // Ensure data channel exists for host
+        if (!dataChannel || dataChannel.readyState === 'closed' || dataChannel.readyState === 'closing') {
+            dataChannel = peerConnection.createDataChannel('p2p-files', { negotiated: false });
+            setupDataChannel(dataChannel);
+        }
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        push(ref(database, `sessions/${sessionCode}/signaling`), {
+            sender: currentUserName,
+            type: 'offer',
+            offer: JSON.stringify(offer)
+        });
+    } catch (e) {
+        console.error('Create offer failed', e);
+    } finally {
+        isOfferInProgress = false;
+    }
 }
 
 // Data Channel Data Buffering
@@ -379,8 +438,24 @@ let bytesReceived = 0;
 
 function setupDataChannel(channel) {
     channel.binaryType = "arraybuffer";
-    channel.onopen = () => console.log("P2P Data Channel Open");
-    channel.onerror = (e) => console.log("P2P Error:", e);
+    channel.onopen = () => {
+        console.log("P2P Data Channel Open");
+        uploadIndicator.innerHTML = '<i class="fa-solid fa-satellite-dish fa-spin"></i> P2P Connected';
+        uploadIndicator.classList.remove('hidden');
+        setTimeout(() => uploadIndicator.classList.add('hidden'), 1200);
+    };
+    channel.onclose = () => {
+        console.warn("P2P Data Channel Closed");
+        uploadIndicator.innerHTML = '<span style="color:#f53333;">P2P channel closed. Reconnecting...</span>';
+        uploadIndicator.classList.remove('hidden');
+        setTimeout(() => uploadIndicator.classList.add('hidden'), 2500);
+    };
+    channel.onerror = (e) => {
+        console.error("P2P Error:", e);
+        uploadIndicator.innerHTML = '<span style="color:#ffbb33;">P2P error: reconnect</span>';
+        uploadIndicator.classList.remove('hidden');
+        setTimeout(() => uploadIndicator.classList.add('hidden'), 3000);
+    };
     
     channel.onmessage = async (event) => {
         if (typeof event.data === 'string') {
@@ -485,8 +560,14 @@ function renderReceivedFileMessage(meta, url) {
 
 async function sendFileP2P(file) {
     if (!dataChannel || dataChannel.readyState !== "open") {
-        alert("P2P connection not established. Waiting for peers...");
-        return;
+        const ready = await waitForDataChannelOpen(7000);
+        if (!ready) {
+            uploadIndicator.innerHTML = '<span style="color:#ffbc42;">P2P channel not ready, reconnect and try again.</span>';
+            uploadIndicator.classList.remove('hidden');
+            setTimeout(() => uploadIndicator.classList.add('hidden'), 2500);
+            console.warn('sendFileP2P blocked: data channel still not open', dataChannel);
+            return;
+        }
     }
 
     uploadIndicator.innerHTML = `<div><i class="fa-solid fa-satellite-dish fa-spin"></i> Uploading: <span id="transfer-progress">0%</span></div><div class="progress-bar-container"><div id="progress-bar-fill" class="progress-bar-fill"></div></div>`;
