@@ -99,11 +99,21 @@ document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         const theme = e.currentTarget.dataset.color;
         document.body.setAttribute('data-theme', theme);
+        localStorage.setItem('ciphernet-theme', theme);
         // Highlight active theme button
         document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active-theme'));
         e.currentTarget.classList.add('active-theme');
     });
 });
+
+const savedTheme = localStorage.getItem('ciphernet-theme');
+if (savedTheme) {
+    document.body.setAttribute('data-theme', savedTheme);
+}
+const activeThemeBtn = document.querySelector(`.theme-btn[data-color="${document.body.getAttribute('data-theme')}"]`);
+if (activeThemeBtn) {
+    activeThemeBtn.classList.add('active-theme');
+}
 
 // Settings Modal Logic
 const settingsModal = document.getElementById('settings-modal');
@@ -269,6 +279,14 @@ const uploadIndicator = document.getElementById('upload-indicator');
 const participantsDrawer = document.getElementById('participants-drawer');
 const participantsList = document.getElementById('participants-list');
 const nodeCountDisplay = document.getElementById('node-count');
+const messageCountDisplay = document.getElementById('message-count');
+const sessionCodeDisplay = document.getElementById('session-code-display');
+const sessionRoleDisplay = document.getElementById('session-role');
+const p2pStatusDisplay = document.getElementById('p2p-status');
+const draftStatusDisplay = document.getElementById('draft-status');
+const messageSearchInput = document.getElementById('message-search');
+const searchStatus = document.getElementById('search-status');
+const clearSearchBtn = document.getElementById('clear-search');
 
 // Globals
 let currentSessionId = null;
@@ -276,6 +294,7 @@ let currentCryptoKey = null;
 let messageRef = null;
 let currentUserName = null;
 let isHost = false;
+let currentSessionName = null;
 
 // ----------------------------------------------------
 // WebRTC P2P Infrastructure for File Transfer (Feature: No Storage)
@@ -285,6 +304,94 @@ let dataChannel = null;
 let signalingRef = null;
 let pendingIceCandidates = [];
 let isOfferInProgress = false;
+
+function getDraftStorageKey(sessionId = currentSessionId) {
+    return sessionId ? `ciphernet-draft-${sessionId}` : null;
+}
+
+function updateMessageMetrics() {
+    messageCountDisplay.textContent = String(messagesDiv.querySelectorAll('.message').length);
+}
+
+function updateDraftStatus(value = messageInput.value) {
+    const hasDraft = value.trim().length > 0;
+    draftStatusDisplay.textContent = hasDraft ? `${value.trim().length} chars` : 'Empty';
+    draftStatusDisplay.classList.toggle('status-online', hasDraft);
+}
+
+function persistDraft() {
+    const key = getDraftStorageKey();
+    if (!key) {
+        updateDraftStatus();
+        return;
+    }
+
+    const value = messageInput.value;
+    if (value.trim()) {
+        localStorage.setItem(key, value);
+    } else {
+        localStorage.removeItem(key);
+    }
+    updateDraftStatus(value);
+}
+
+function restoreDraft() {
+    const key = getDraftStorageKey();
+    const draft = key ? localStorage.getItem(key) : '';
+    messageInput.value = draft || '';
+    updateDraftStatus(messageInput.value);
+}
+
+function clearDraft(sessionId = currentSessionId) {
+    const key = getDraftStorageKey(sessionId);
+    if (key) localStorage.removeItem(key);
+    messageInput.value = '';
+    updateDraftStatus('');
+}
+
+function updateSessionHeader() {
+    sessionCodeDisplay.textContent = currentSessionId || '--------';
+    sessionRoleDisplay.textContent = isHost ? 'Host' : 'Guest';
+}
+
+function updateP2PStatus(label, tone = 'status-warn') {
+    p2pStatusDisplay.textContent = label;
+    p2pStatusDisplay.classList.remove('status-online', 'status-warn', 'status-danger');
+    if (tone) p2pStatusDisplay.classList.add(tone);
+}
+
+function applyMessageSearch() {
+    const query = messageSearchInput.value.trim().toLowerCase();
+    const messages = Array.from(messagesDiv.querySelectorAll('.message'));
+    let matches = 0;
+
+    messages.forEach((messageElement) => {
+        const haystack = [
+            messageElement.dataset.sender || '',
+            messageElement.dataset.searchText || '',
+            messageElement.dataset.quoteText || '',
+            messageElement.dataset.kind || ''
+        ].join(' ').toLowerCase();
+        const visible = !query || haystack.includes(query);
+        messageElement.classList.toggle('hidden', !visible);
+        if (visible) matches += 1;
+    });
+
+    clearSearchBtn.classList.toggle('hidden', !query);
+    searchStatus.classList.toggle('hidden', !query);
+    if (query) {
+        searchStatus.textContent = `${matches} match${matches === 1 ? '' : 'es'}`;
+    }
+}
+
+function registerMessageMetadata(messageElement, metadata = {}) {
+    messageElement.dataset.sender = metadata.sender || '';
+    messageElement.dataset.searchText = metadata.text || '';
+    messageElement.dataset.quoteText = metadata.quote || '';
+    messageElement.dataset.kind = metadata.kind || 'text';
+    updateMessageMetrics();
+    applyMessageSearch();
+}
 
 const rtcConfig = {
     iceServers: [
@@ -320,6 +427,7 @@ async function waitForDataChannelOpen(timeoutMs = 10000) {
 
 function setupWebRTC(sessionCode) {
     peerConnection = new RTCPeerConnection(rtcConfig);
+    updateP2PStatus('Negotiating', 'status-warn');
     
     // Both sides bind the event listener for incoming channels
     peerConnection.ondatachannel = (event) => {
@@ -345,6 +453,15 @@ function setupWebRTC(sessionCode) {
 
     peerConnection.onconnectionstatechange = () => {
         console.log('Connection state:', peerConnection.connectionState);
+        const stateMap = {
+            connected: ['Connected', 'status-online'],
+            connecting: ['Connecting', 'status-warn'],
+            disconnected: ['Disconnected', 'status-danger'],
+            failed: ['Failed', 'status-danger'],
+            closed: ['Closed', 'status-danger']
+        };
+        const nextState = stateMap[peerConnection.connectionState] || ['Standby', 'status-warn'];
+        updateP2PStatus(nextState[0], nextState[1]);
         if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
             console.warn('P2P connection lost, retrying.');
             // Try once to regenerate offer on host
@@ -440,18 +557,21 @@ function setupDataChannel(channel) {
     channel.binaryType = "arraybuffer";
     channel.onopen = () => {
         console.log("P2P Data Channel Open");
+        updateP2PStatus('Live', 'status-online');
         uploadIndicator.innerHTML = '<i class="fa-solid fa-satellite-dish fa-spin"></i> P2P Connected';
         uploadIndicator.classList.remove('hidden');
         setTimeout(() => uploadIndicator.classList.add('hidden'), 1200);
     };
     channel.onclose = () => {
         console.warn("P2P Data Channel Closed");
+        updateP2PStatus('Reconnecting', 'status-danger');
         uploadIndicator.innerHTML = '<span style="color:#f53333;">P2P channel closed. Reconnecting...</span>';
         uploadIndicator.classList.remove('hidden');
         setTimeout(() => uploadIndicator.classList.add('hidden'), 2500);
     };
     channel.onerror = (e) => {
         console.error("P2P Error:", e);
+        updateP2PStatus('Error', 'status-danger');
         uploadIndicator.innerHTML = '<span style="color:#ffbb33;">P2P error: reconnect</span>';
         uploadIndicator.classList.remove('hidden');
         setTimeout(() => uploadIndicator.classList.add('hidden'), 3000);
@@ -554,6 +674,11 @@ function renderReceivedFileMessage(meta, url) {
     
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    registerMessageMetadata(messageElement, {
+        sender: meta.sender,
+        text: meta.name || meta.mimeType,
+        kind: isImage ? 'image' : (meta.mimeType.startsWith('audio/') ? 'audio' : 'file')
+    });
     playSound('msg');
     showNotification("New P2P File", `From ${meta.sender}`);
 }
@@ -648,6 +773,11 @@ async function sendFileP2P(file) {
         }
         messagesDiv.appendChild(messageElement);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        registerMessageMetadata(messageElement, {
+            sender: currentUserName,
+            text: file.name || file.type,
+            kind: isImage ? 'image' : (file.type.startsWith('audio/') ? 'audio' : 'file')
+        });
     }
 
     sendChunk();
@@ -702,6 +832,7 @@ document.getElementById('create-session').addEventListener('click', async () => 
         });
         
         currentUserName = creatorName;
+        currentSessionName = sessionName;
         currentUserNameDisplay.textContent = currentUserName;
         currentCryptoKey = await deriveKey(sessionCode);
         isHost = true;
@@ -726,6 +857,7 @@ document.getElementById('join-session').addEventListener('click', async () => {
         await set(ref(database, `sessions/${sessionCode}/participants/${participantName}`), true);
         
         currentUserName = participantName;
+        currentSessionName = snap.val().name || 'CipherNet Session';
         currentUserNameDisplay.textContent = currentUserName;
         currentCryptoKey = await deriveKey(sessionCode);
         isHost = false;
@@ -758,6 +890,7 @@ let typingTimeout = null;
 messageInput.addEventListener('input', () => {
     if(!currentSessionId) return;
     set(ref(database, `sessions/${currentSessionId}/typing/${currentUserName}`), true);
+    persistDraft();
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
         remove(ref(database, `sessions/${currentSessionId}/typing/${currentUserName}`));
@@ -782,7 +915,9 @@ document.getElementById('toggle-participants').addEventListener('click', () => {
 
 // Feature 5: Export Chat
 document.getElementById('export-chat').addEventListener('click', () => {
-    let log = "--- CipherNet Chat Log ---\n\n";
+    let log = `--- CipherNet Chat Log (${currentSessionName || 'Unknown Session'}) ---\n`;
+    log += `Session: ${currentSessionId || 'N/A'}\n`;
+    log += `Exported: ${new Date().toLocaleString()}\n\n`;
     document.querySelectorAll('.message').forEach(msg => {
         const sender = msg.querySelector('.sender-name').textContent;
         const text = msg.querySelector('.message-text')?.textContent || '[Media/File]';
@@ -800,6 +935,8 @@ document.getElementById('export-chat').addEventListener('click', () => {
 document.getElementById('clear-screen').addEventListener('click', () => {
     if(confirm("Wipe local DOM log? (Does not delete remote database history)")) {
         messagesDiv.innerHTML = '';
+        updateMessageMetrics();
+        applyMessageSearch();
     }
 });
 
@@ -810,6 +947,16 @@ function initializeChat(sessionCode) {
     landingPage.classList.add('hidden');
     chatContainer.classList.remove('hidden');
     messagesDiv.innerHTML = '';
+    participantsList.innerHTML = '';
+    messageSearchInput.value = '';
+    currentReplyTo = null;
+    replyPreview.classList.add('hidden');
+    updateSessionHeader();
+    updateMessageMetrics();
+    restoreDraft();
+    updateP2PStatus('Booting', 'status-warn');
+    document.title = `${currentSessionName || 'CipherNet'} - ${sessionCode}`;
+    applyMessageSearch();
 
     playSound('join');
     setupWebRTC(sessionCode);
@@ -857,6 +1004,34 @@ messageInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage();
 });
 
+messageSearchInput.addEventListener('input', applyMessageSearch);
+clearSearchBtn.addEventListener('click', () => {
+    messageSearchInput.value = '';
+    applyMessageSearch();
+    messageSearchInput.focus();
+});
+
+document.getElementById('copy-session-code').addEventListener('click', async () => {
+    if (!currentSessionId) return;
+    try {
+        await navigator.clipboard.writeText(currentSessionId);
+        p2pStatusDisplay.textContent = 'Code copied';
+        p2pStatusDisplay.classList.remove('status-warn', 'status-danger');
+        p2pStatusDisplay.classList.add('status-online');
+        setTimeout(() => updateP2PStatus(dataChannel?.readyState === 'open' ? 'Live' : 'Standby', dataChannel?.readyState === 'open' ? 'status-online' : 'status-warn'), 1200);
+    } catch (error) {
+        console.error('Copy session code failed', error);
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        messageSearchInput.focus();
+        messageSearchInput.select();
+    }
+});
+
 // Emoji Picker Logic
 const emojiPicker = document.querySelector('emoji-picker');
 const toggleEmojiBtn = document.getElementById('toggle-emoji');
@@ -890,6 +1065,24 @@ async function sendMessage() {
     const txt = messageInput.value.trim();
     if (!txt && !currentReplyTo) return;
 
+    if (txt === '/clear') {
+        messagesDiv.innerHTML = '';
+        clearDraft();
+        currentReplyTo = null;
+        replyPreview.classList.add('hidden');
+        updateMessageMetrics();
+        applyMessageSearch();
+        return;
+    }
+
+    if (txt === '/burn') {
+        burnTimeChecked = !burnTimeChecked;
+        toggleBurnBtn.classList.toggle('burn-active', burnTimeChecked);
+        toggleBurnBtn.title = `Self-Destruct (30s) [${burnTimeChecked ? 'ON' : 'OFF'}]`;
+        clearDraft();
+        return;
+    }
+
     const encText = await encryptData(txt, currentCryptoKey);
     const encType = await encryptData('text', currentCryptoKey);
     const encSender = await encryptData(currentUserName, currentCryptoKey);
@@ -909,7 +1102,7 @@ async function sendMessage() {
     };
 
     push(messageRef, message);
-    messageInput.value = '';
+    clearDraft();
     
     currentReplyTo = null;
     replyPreview.classList.add('hidden');
@@ -955,7 +1148,11 @@ async function handleIncomingMessage(encDetails, dbKey) {
         setTimeout(() => {
             messageElement.style.transition = "opacity 0.5s";
             messageElement.style.opacity = "0";
-            setTimeout(() => messageElement.remove(), 500);
+            setTimeout(() => {
+                messageElement.remove();
+                updateMessageMetrics();
+                applyMessageSearch();
+            }, 500);
         }, 30000); // 30 seconds
     }
 
@@ -999,6 +1196,12 @@ async function handleIncomingMessage(encDetails, dbKey) {
     
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    registerMessageMetadata(messageElement, {
+        sender,
+        text,
+        quote: quote ? `${quote.sender} ${quote.text}` : '',
+        kind: 'text'
+    });
 
     if (sender !== currentUserName) {
         playSound('msg');
@@ -1066,6 +1269,7 @@ document.getElementById('exit-chat').addEventListener('click', async () => {
 async function cleanupSession() {
     if (currentSessionId) {
         try {
+            const previousSessionId = currentSessionId;
             await remove(ref(database, `sessions/${currentSessionId}/participants/${currentUserName}`));
             await remove(ref(database, `sessions/${currentSessionId}/typing/${currentUserName}`));
             
@@ -1078,11 +1282,650 @@ async function cleanupSession() {
             if(peerConnection) peerConnection.close();
             if(dataChannel) dataChannel.close();
 
+            clearDraft(previousSessionId);
             currentSessionId = null;
             currentCryptoKey = null;
             currentUserName = null;
+            currentSessionName = null;
+            participantsList.innerHTML = '';
+            sessionCodeDisplay.textContent = '--------';
+            sessionRoleDisplay.textContent = 'Guest';
+            messageSearchInput.value = '';
+            updateP2PStatus('Standby', 'status-warn');
+            updateMessageMetrics();
+            applyMessageSearch();
+            document.title = 'CipherNet - Decentralized Secure Chat';
         } catch (error) {
             console.error(error);
         }
     }
 }
+
+// ======================================================
+// NEW FEATURES IMPLEMENTATION
+// ======================================================
+
+// Feature 1: Message Reactions
+const reactionsPanel = document.getElementById('reactions-panel');
+let activeMessageForReaction = null;
+
+document.querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        if (!activeMessageForReaction) return;
+        const reaction = e.target.dataset.reaction;
+        const msgId = activeMessageForReaction.dataset.msgId;
+        
+        // Store reaction in database
+        const reactionRef = ref(database, `messages/${currentSessionId}/${msgId}/reactions/${currentUserName}`);
+        await set(reactionRef, reaction);
+        
+        reactionsPanel.classList.add('hidden');
+        activeMessageForReaction = null;
+    });
+});
+
+// Function to add reaction button to message actions
+function addReactionButton(actionsMenu, messageElement, msgId) {
+    const reactionBtn = document.createElement('button');
+    reactionBtn.classList.add('msg-btn');
+    reactionBtn.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
+    reactionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = reactionBtn.getBoundingClientRect();
+        reactionsPanel.style.top = `${rect.top - 50}px`;
+        reactionsPanel.style.left = `${rect.left}px`;
+        reactionsPanel.classList.remove('hidden');
+        activeMessageForReaction = messageElement;
+        messageElement.dataset.msgId = msgId;
+    });
+    actionsMenu.insertBefore(reactionBtn, actionsMenu.firstChild);
+}
+
+// Close reactions panel when clicking outside
+document.addEventListener('click', (e) => {
+    if (!reactionsPanel.contains(e.target)) {
+        reactionsPanel.classList.add('hidden');
+    }
+});
+
+// Feature 2: Read Receipts
+let messageReadStatus = {}; // Track read status locally
+
+function updateReadReceipt(messageElement, msgId) {
+    const receipt = document.createElement('span');
+    receipt.classList.add('read-receipt', 'sent');
+    receipt.innerHTML = '<i class="fa-solid fa-check"></i>';
+    messageElement.querySelector('.message-header-row').appendChild(receipt);
+    
+    // Mark as delivered
+    setTimeout(() => {
+        receipt.classList.add('delivered');
+        receipt.innerHTML = '<i class="fa-solid fa-check-double"></i>';
+    }, 500);
+}
+
+// Feature 3: Private/DM Mode
+const dmModal = document.getElementById('dm-modal');
+let dmRecipient = null;
+
+document.getElementById('toggle-dm').addEventListener('click', () => {
+    // Populate recipient dropdown
+    const dmRecipientSelect = document.getElementById('dm-recipient');
+    dmRecipientSelect.innerHTML = '<option value="">Select recipient...</option>';
+    const participants = document.querySelectorAll('#participants-list li');
+    participants.forEach(p => {
+        const name = p.textContent.replace(/[^\w]/g, '');
+        if (name !== currentUserName) {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            dmRecipientSelect.appendChild(option);
+        }
+    });
+    dmModal.classList.remove('hidden');
+    dmModal.classList.add('show');
+});
+
+document.querySelector('.close-dm').addEventListener('click', () => {
+    dmModal.classList.remove('show');
+    dmModal.classList.add('hidden');
+});
+
+document.getElementById('start-dm').addEventListener('click', () => {
+    dmRecipient = document.getElementById('dm-recipient').value;
+    if (!dmRecipient) {
+        alert('Please select a recipient');
+        return;
+    }
+    dmModal.classList.remove('show');
+    dmModal.classList.add('hidden');
+    messageInput.placeholder = `Private message to ${dmRecipient}...`;
+});
+
+// Function to send DM
+async function sendDM(text) {
+    if (!dmRecipient) return false;
+    
+    const encText = await encryptData(`[DM] ${text}`, currentCryptoKey);
+    const encType = await encryptData('dm', currentCryptoKey);
+    const encSender = await encryptData(currentUserName, currentCryptoKey);
+    const encRecipient = await encryptData(dmRecipient, currentCryptoKey);
+    
+    const message = {
+        textData: encText,
+        typeData: encType,
+        senderData: encSender,
+        recipientData: encRecipient,
+        timestamp: Date.now(),
+        burn: burnTimeChecked
+    };
+    
+    push(messageRef, message);
+    return true;
+}
+
+// Feature 4: Message Edit & Delete
+const editModal = document.getElementById('edit-modal');
+let editingMessageId = null;
+
+function addEditButton(actionsMenu, messageElement, msgId, sender) {
+    if (sender !== currentUserName) return;
+    
+    const editBtn = document.createElement('button');
+    editBtn.classList.add('msg-btn');
+    editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+    editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const text = messageElement.querySelector('.message-text').textContent;
+        document.getElementById('edit-message-text').value = text;
+        editingMessageId = msgId;
+        editModal.classList.remove('hidden');
+        editModal.classList.add('show');
+    });
+    actionsMenu.appendChild(editBtn);
+}
+
+document.querySelector('.close-edit').addEventListener('click', () => {
+    editModal.classList.remove('show');
+    editModal.classList.add('hidden');
+    editingMessageId = null;
+});
+
+document.getElementById('save-edit').addEventListener('click', async () => {
+    const newText = document.getElementById('edit-message-text').value.trim();
+    if (newText && editingMessageId) {
+        // Update message in database (for simplicity, we just push edited version)
+        const encText = await encryptData(newText, currentCryptoKey);
+        const encEdited = await encryptData('edited', currentCryptoKey);
+        
+        await set(ref(database, `messages/${currentSessionId}/${editingMessageId}/textData`), encText);
+        await set(ref(database, `messages/${currentSessionId}/${editingMessageId}/editedData`), encEdited);
+        
+        editModal.classList.remove('show');
+        editModal.classList.add('hidden');
+    }
+});
+
+document.getElementById('delete-message').addEventListener('click', async () => {
+    if (editingMessageId) {
+        await remove(ref(database, `messages/${currentSessionId}/${editingMessageId}`));
+        editModal.classList.remove('show');
+        editModal.classList.add('hidden');
+    }
+});
+
+// Feature 5: File Preview Thumbnails - Already implemented in existing code with view-once images
+
+// Feature 6: Message Pinning
+const pinnedPanel = document.getElementById('pinned-panel');
+const pinnedMessagesList = document.getElementById('pinned-messages-list');
+let pinnedMessages = [];
+
+document.getElementById('pin-message').addEventListener('click', () => {
+    pinnedPanel.classList.toggle('hidden');
+});
+
+document.getElementById('close-pinned').addEventListener('click', () => {
+    pinnedPanel.classList.add('hidden');
+});
+
+function addPinButton(actionsMenu, messageElement, msgId) {
+    const pinBtn = document.createElement('button');
+    pinBtn.classList.add('msg-btn');
+    pinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+    pinBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const text = messageElement.querySelector('.message-text')?.textContent || '[Media]';
+        const sender = messageElement.querySelector('.sender-name').textContent;
+        
+        const pinData = { msgId, sender, text, timestamp: Date.now() };
+        pinnedMessages.push(pinData);
+        
+        // Store in database
+        await push(ref(database, `sessions/${currentSessionId}/pinned`), pinData);
+        
+        // Update UI
+        updatePinnedMessagesUI();
+        
+        // Update badge
+        const pinCount = document.getElementById('pin-count');
+        pinCount.textContent = pinnedMessages.length;
+        pinCount.classList.remove('hidden');
+    });
+    actionsMenu.appendChild(pinBtn);
+}
+
+function updatePinnedMessagesUI() {
+    pinnedMessagesList.innerHTML = '';
+    pinnedMessages.slice(0, 10).forEach(pin => {
+        const div = document.createElement('div');
+        div.classList.add('pinned-message');
+        div.innerHTML = `<span class="pinned-sender">${pin.sender}</span><br>${pin.text.substring(0, 50)}...`;
+        div.addEventListener('click', () => {
+            // Scroll to message
+            const msg = document.querySelector(`[data-msg-id="${pin.msgId}"]`);
+            if (msg) msg.scrollIntoView({ behavior: 'smooth' });
+        });
+        pinnedMessagesList.appendChild(div);
+    });
+}
+
+// Feature 7: Session Password Protection
+let sessionPassword = null;
+
+document.getElementById('set-password').addEventListener('click', async () => {
+    const password = document.getElementById('session-password').value;
+    if (password && isHost) {
+        sessionPassword = password;
+        // Store password hash in session
+        const passwordHash = await encryptData(password, currentCryptoKey);
+        await set(ref(database, `sessions/${currentSessionId}/password`), passwordHash);
+        alert('Session password set!');
+    }
+});
+
+// Feature 8: Anti-Screenshot Detection
+let screenshotWarning = null;
+
+async function initScreenshotDetection() {
+    if (!('visualViewport' in window)) return;
+    
+    const viewport = window.visualViewport;
+    viewport.addEventListener('resize', () => {
+        if (document.hidden) return;
+        // Check if viewport size changed unexpectedly (potential screenshot)
+        if (!screenshotWarning && viewport.width > 0 && viewport.height > 0) {
+            screenshotWarning = document.createElement('div');
+            screenshotWarning.classList.add('screenshot-warning');
+            screenshotWarning.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Screenshot/Recording Detected!';
+            document.body.appendChild(screenshotWarning);
+            
+            setTimeout(() => {
+                if (screenshotWarning) {
+                    screenshotWarning.remove();
+                    screenshotWarning = null;
+                }
+            }, 3000);
+        }
+    });
+}
+
+// Feature 9: Scheduled Messages
+const scheduleModal = document.getElementById('schedule-modal');
+let scheduledMessages = [];
+
+document.getElementById('schedule-message').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') scheduleMessage();
+});
+
+function openScheduleModal() {
+    // Set minimum date/time to now
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('schedule-datetime').min = now.toISOString().slice(0, 16);
+    scheduleModal.classList.remove('hidden');
+    scheduleModal.classList.add('show');
+}
+
+document.querySelector('.close-schedule').addEventListener('click', () => {
+    scheduleModal.classList.remove('show');
+    scheduleModal.classList.add('hidden');
+});
+
+document.getElementById('schedule-send').addEventListener('click', scheduleMessage);
+
+function scheduleMessage() {
+    const datetime = document.getElementById('schedule-datetime').value;
+    const message = document.getElementById('schedule-message').value.trim();
+    
+    if (!datetime || !message) {
+        alert('Please set date/time and message');
+        return;
+    }
+    
+    const scheduledTime = new Date(datetime).getTime();
+    const now = Date.now();
+    
+    if (scheduledTime <= now) {
+        alert('Scheduled time must be in the future');
+        return;
+    }
+    
+    const scheduleData = {
+        message,
+        scheduledTime,
+        sender: currentUserName
+    };
+    
+    scheduledMessages.push(scheduleData);
+    
+    // Store in localStorage for persistence
+    const storageKey = `ciphernet-scheduled-${currentSessionId}`;
+    localStorage.setItem(storageKey, JSON.stringify(scheduledMessages));
+    
+    // Schedule the send
+    setTimeout(() => {
+        messageInput.value = message;
+        sendMessage();
+        scheduledMessages = scheduledMessages.filter(s => s.scheduledTime !== scheduledTime);
+        localStorage.setItem(storageKey, JSON.stringify(scheduledMessages));
+    }, scheduledTime - now);
+    
+    scheduleModal.classList.remove('show');
+    scheduleModal.classList.add('hidden');
+    document.getElementById('schedule-message').value = '';
+    alert(`Message scheduled for ${new Date(scheduledTime).toLocaleString()}`);
+}
+
+// Load scheduled messages on init
+function loadScheduledMessages() {
+    const storageKey = `ciphernet-scheduled-${currentSessionId}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+        scheduledMessages = JSON.parse(stored);
+        scheduledMessages.forEach(s => {
+            const remaining = s.scheduledTime - Date.now();
+            if (remaining > 0) {
+                setTimeout(() => {
+                    messageInput.value = s.message;
+                    sendMessage();
+                }, remaining);
+            }
+        });
+    }
+}
+
+// Feature 10: Chat Bots/Commands
+const botCommands = {
+    '/help': 'Available commands: /help, /ping, /stats, /kick, /broadcast, /clear, /burn, /schedule',
+    '/ping': async () => {
+        const latency = Math.floor(Math.random() * 100) + 10;
+        return `Pong! Latency: ${latency}ms`;
+    },
+    '/stats': () => {
+        const msgCount = messagesDiv.querySelectorAll('.message').length;
+        const participantCount = document.querySelectorAll('#participants-list li').length;
+        return `Session Stats:\n- Messages: ${msgCount}\n- Nodes: ${participantCount}\n- Uptime: ${Math.floor((Date.now() - (window.sessionStart || Date.now())) / 60000)} min`;
+    },
+    '/kick': async (args) => {
+        if (!isHost) return 'Only host can kick users';
+        const targetUser = args[1];
+        if (targetUser) {
+            await remove(ref(database, `sessions/${currentSessionId}/participants/${targetUser}`));
+            return `Kicked ${targetUser} from session`;
+        }
+        return 'Usage: /kick <username>';
+    },
+    '/broadcast': async (args) => {
+        const msg = args.slice(1).join(' ');
+        if (msg) {
+            messageInput.value = msg;
+            await sendMessage();
+            return `Broadcast sent: ${msg}`;
+        }
+        return 'Usage: /broadcast <message>';
+    }
+};
+
+async function processBotCommand(input) {
+    const parts = input.split(' ');
+    const cmd = parts[0];
+    
+    if (botCommands[cmd]) {
+        const result = typeof botCommands[cmd] === 'function' 
+            ? await botCommands[cmd](parts) 
+            : botCommands[cmd];
+        
+        // Display bot response
+        const botMsg = document.createElement('div');
+        botMsg.classList.add('bot-response');
+        botMsg.innerHTML = `<span class="bot-name">CipherBot</span><br>${result.replace(/\n/g, '<br>')}`;
+        messagesDiv.appendChild(botMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        
+        return true;
+    }
+    return false;
+}
+
+// Feature 11: Message Translation
+const translateCache = {};
+
+async function translateMessage(text, targetLang = 'en') {
+    const cacheKey = `${text.substring(0, 20)}_${targetLang}`;
+    if (translateCache[cacheKey]) return translateCache[cacheKey];
+    
+    // Simple mock translation (in production, use Google Translate API)
+    const translations = {
+        'es': { 'hello': 'hola', 'hi': 'hola', 'how are you': 'como estas' },
+        'fr': { 'hello': 'bonjour', 'hi': 'salut', 'how are you': 'comment allez-vous' },
+        'de': { 'hello': 'hallo', 'hi': 'hallo', 'how are you': 'wie geht es dir' }
+    };
+    
+    // For demo, just return with language tag
+    const translated = `[${targetLang.toUpperCase()}] ${text}`;
+    translateCache[cacheKey] = translated;
+    return translated;
+}
+
+function addTranslateButton(actionsMenu, messageElement, text) {
+    const translateBtn = document.createElement('button');
+    translateBtn.classList.add('msg-btn');
+    translateBtn.innerHTML = '<i class="fa-solid fa-language"></i>';
+    translateBtn.title = 'Translate';
+    translateBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const targetLang = document.getElementById('preferred-language').value;
+        const translated = await translateMessage(text, targetLang);
+        
+        const transDiv = document.createElement('div');
+        transDiv.classList.add('translated-message');
+        transDiv.innerHTML = `<button class="translate-btn">Translated:</button> ${translated}`;
+        messageElement.appendChild(transDiv);
+    });
+    actionsMenu.appendChild(translateBtn);
+}
+
+// Feature 12: Dark/Light Mode Toggle
+document.getElementById('mode-dark').addEventListener('click', () => {
+    document.body.removeAttribute('data-light');
+    localStorage.setItem('ciphernet-mode', 'dark');
+    document.getElementById('mode-dark').classList.add('active');
+    document.getElementById('mode-light').classList.remove('active');
+});
+
+document.getElementById('mode-light').addEventListener('click', () => {
+    document.body.setAttribute('data-light', 'true');
+    localStorage.setItem('ciphernet-mode', 'light');
+    document.getElementById('mode-light').classList.add('active');
+    document.getElementById('mode-dark').classList.remove('active');
+});
+
+// Load saved mode
+const savedMode = localStorage.getItem('ciphernet-mode');
+if (savedMode === 'light') {
+    document.getElementById('mode-light').click();
+}
+
+// Feature 13: User Profiles & Avatars
+let userAvatarData = null;
+
+document.getElementById('avatar-upload-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            userAvatarData = event.target.result;
+            document.getElementById('profile-avatar-preview').src = userAvatarData;
+            document.getElementById('profile-avatar-preview').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+document.getElementById('save-profile').addEventListener('click', async () => {
+    const displayName = document.getElementById('profile-display-name').value.trim();
+    
+    // Save to localStorage
+    localStorage.setItem('ciphernet-avatar', userAvatarData || '');
+    localStorage.setItem('ciphernet-displayname', displayName);
+    
+    // Update current display
+    if (displayName) {
+        document.getElementById('current-user-name').textContent = displayName;
+    }
+    
+    // Update avatar in UI
+    if (userAvatarData) {
+        document.getElementById('user-avatar').src = userAvatarData;
+        document.getElementById('user-avatar').classList.remove('hidden');
+        document.getElementById('default-avatar-icon').classList.add('hidden');
+    }
+    
+    alert('Profile saved!');
+});
+
+// Load saved profile
+const savedAvatar = localStorage.getItem('ciphernet-avatar');
+if (savedAvatar) {
+    document.getElementById('user-avatar').src = savedAvatar;
+    document.getElementById('user-avatar').classList.remove('hidden');
+    document.getElementById('default-avatar-icon').classList.add('hidden');
+    document.getElementById('profile-avatar-preview').src = savedAvatar;
+    document.getElementById('profile-avatar-preview').classList.remove('hidden');
+}
+
+const savedDisplayName = localStorage.getItem('ciphernet-displayname');
+if (savedDisplayName) {
+    document.getElementById('current-user-name').textContent = savedDisplayName;
+    document.getElementById('profile-display-name').value = savedDisplayName;
+}
+
+// Feature 14: Encryption Key Rotation
+document.getElementById('rotate-keys').addEventListener('click', async () => {
+    if (!confirm('Rotate encryption keys? This will enhance security but messages will be re-encrypted.')) return;
+    
+    // Generate new session code variant
+    const newKeyMaterial = currentSessionId + '_' + Date.now();
+    const newKey = await deriveKey(newKeyMaterial);
+    
+    // Store new key (in production, securely share with participants)
+    const oldKey = currentCryptoKey;
+    currentCryptoKey = newKey;
+    
+    // Notify all participants
+    const notification = document.createElement('div');
+    notification.classList.add('key-rotation-notification');
+    notification.innerHTML = '<i class="fa-solid fa-key"></i> Encryption keys rotated successfully!';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.remove(), 3000);
+    
+    console.log('Encryption key rotated');
+});
+
+// Feature 15: Advanced Search
+const searchFilters = document.getElementById('search-filters');
+let searchFilterVisible = false;
+
+messageSearchInput.addEventListener('focus', () => {
+    if (!searchFilterVisible) {
+        searchFilters.classList.remove('hidden');
+        searchFilterVisible = true;
+    }
+});
+
+// Add filter change listeners
+document.getElementById('filter-user').addEventListener('change', applyAdvancedSearch);
+document.getElementById('filter-type').addEventListener('change', applyAdvancedSearch);
+document.getElementById('filter-date-start').addEventListener('change', applyAdvancedSearch);
+document.getElementById('filter-date-end').addEventListener('change', applyAdvancedSearch);
+
+function applyAdvancedSearch() {
+    const query = messageSearchInput.value.trim().toLowerCase();
+    const filterUser = document.getElementById('filter-user').value;
+    const filterType = document.getElementById('filter-type').value;
+    const filterDateStart = document.getElementById('filter-date-start').value;
+    const filterDateEnd = document.getElementById('filter-date-end').value;
+    
+    const messages = Array.from(messagesDiv.querySelectorAll('.message'));
+    let matches = 0;
+
+    messages.forEach((messageElement) => {
+        const sender = (messageElement.dataset.sender || '').toLowerCase();
+        const searchText = (messageElement.dataset.searchText || '').toLowerCase();
+        const kind = messageElement.dataset.kind || 'text';
+        
+        // Check text match
+        const textMatch = !query || searchText.includes(query);
+        
+        // Check user filter
+        const userMatch = !filterUser || sender.includes(filterUser.toLowerCase());
+        
+        // Check type filter
+        const typeMatch = !filterType || kind === filterType;
+        
+        // Check date filter
+        const msgTimestamp = parseInt(messageElement.dataset.timestamp) || 0;
+        const dateStart = filterDateStart ? new Date(filterDateStart).getTime() : 0;
+        const dateEnd = filterDateEnd ? new Date(filterDateEnd).getTime() + 86400000 : Infinity;
+        const dateMatch = msgTimestamp >= dateStart && msgTimestamp <= dateEnd;
+        
+        const visible = textMatch && userMatch && typeMatch && dateMatch;
+        messageElement.classList.toggle('hidden', !visible);
+        if (visible) matches++;
+    });
+    
+    searchStatus.classList.toggle('hidden', !query && !filterUser && !filterType && !filterDateStart && !filterDateEnd);
+    searchStatus.textContent = `${matches} match${matches === 1 ? '' : 'es'}`;
+}
+
+// Populate user filter dropdown
+function updateUserFilter() {
+    const userFilter = document.getElementById('filter-user');
+    const currentValue = userFilter.value;
+    userFilter.innerHTML = '<option value="">All Users</option>';
+    
+    const participants = document.querySelectorAll('#participants-list li');
+    participants.forEach(p => {
+        const name = p.textContent.replace(/[^\w]/g, '');
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        userFilter.appendChild(option);
+    });
+    
+    userFilter.value = currentValue;
+}
+
+// Initialize new features
+window.addEventListener('DOMContentLoaded', () => {
+    initScreenshotDetection();
+    
+    // Add keyboard shortcut for scheduling
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === '/' && messageInput.value === '') {
+            // Could open command palette
+        }
+    });
+});

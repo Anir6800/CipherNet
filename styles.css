@@ -212,6 +212,29 @@ input:focus + i { color: var(--primary); }
 .header-info { display:flex; flex-direction:column; align-items:flex-start;}
 .header-info h2 { font-family: 'Fira Code', monospace; font-size: 1.2rem; color: var(--primary); margin-bottom: 0px; }
 .e2ee-badge { font-size: 0.70rem; color: var(--primary); font-family: 'Fira Code', monospace; opacity: 0.8; }
+.chat-search-shell { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; min-width: 240px; max-width: 320px; flex: 1; margin: 0 1rem; }
+.chat-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    padding: 0.35rem 0.8rem;
+}
+.chat-search i { color: var(--text-muted); font-size: 0.85rem; }
+.chat-search input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-main);
+    width: 100%;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.82rem;
+}
+.chat-search input::-webkit-search-cancel-button { display: none; }
+.search-clear { font-size: 0.9rem; padding: 0.1rem; }
+.search-status { font-size: 0.72rem; color: var(--text-muted); font-family: 'Fira Code', monospace; text-align: left; }
 .header-actions { display: flex; align-items: center; gap: 0.8rem; }
 .user-badge { color: var(--accent); font-family: 'Fira Code', monospace; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; margin-right: 1rem;}
 
@@ -225,6 +248,39 @@ input:focus + i { color: var(--primary); }
 .participants-drawer h3 { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.5rem;}
 .participants-drawer ul { list-style: none; }
 .participants-drawer li { padding: 0.5rem 0; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; }
+.session-intel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--panel-border);
+}
+.intel-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+.intel-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.intel-inline { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.intel-label { color: var(--text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.intel-card strong, .intel-card code {
+    color: var(--text-main);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+}
+.intel-card code { word-break: break-all; }
+.status-online { color: var(--success) !important; }
+.status-warn { color: #ffbc42 !important; }
+.status-danger { color: var(--danger) !important; }
 
 .messages-wrapper { flex-grow: 1; display:flex; flex-direction:column; position: relative; }
 .messages { flex-grow: 1; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: rgba(13, 17, 23, 0.4); }
@@ -433,6 +489,16 @@ input:focus + i { color: var(--primary); }
 .close-settings { font-size: 1.5rem; cursor: pointer; color: var(--text-muted); font-family: 'Inter', sans-serif;}
 .close-settings:hover { color: var(--danger); }
 .settings-section h3 { color: var(--text-main); font-size: 1rem; margin-bottom: 1rem; font-family: 'Fira Code', monospace;}
+.settings-note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    text-align: left;
+}
+.settings-note code {
+    font-family: 'Fira Code', monospace;
+    color: var(--primary);
+}
 
 .theme-grid {
     display: flex;
@@ -502,36 +568,180 @@ input:focus + i { color: var(--primary); }
     border-color: #93A1A1;
 }
 [data-theme="notes"] .chat-input-area {
-    background: #EEE8D5;}
+    background: #EEE8D5;
+    border-top-color: #93A1A1;
+}
+[data-theme="notes"] .chat-search {
+    background: rgba(255,255,255,0.8);
+    border-color: #93A1A1;
+}
+[data-theme="notes"] .chat-search input,
+[data-theme="notes"] .intel-card strong,
+[data-theme="notes"] .intel-card code {
+    color: #073642;
+}
+[data-theme="notes"] .session-intel,
+[data-theme="notes"] .participants-drawer h3 {
+    border-bottom-color: #93A1A1;
+}
+[data-theme="notes"] .intel-card {
+    background: rgba(255,255,255,0.85);
+    border-color: #CCC;
+}
 
 /* Mobile responsiveness improvements */
 @media (max-width: 900px) {
-    .container { padding: 1rem; max-width: 100%; }
-    .secure-panel { padding: 1.2rem; border-radius: 0.75rem; }
-    .landing-page { min-height: inherit; padding: 1.2rem; width: 100%; }
-    .landing-hero { gap: 10px; }
-    .logo { font-size: 2rem; }
-    .tagline { font-size: 0.95rem; }
-    .sub-tagline { font-size: 0.8rem; }
-    .premium-btn { padding: 12px 18px; font-size: 0.95rem; }
-    .chat-container { height: 100vh; border-radius: 0; }
-    .chat-header { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
-    .header-actions { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+    .container { padding: 0.5rem; max-width: 100%; }
+    .secure-panel { padding: 1rem; border-radius: 0.5rem; }
+    .landing-page { 
+        min-height: inherit; 
+        padding: 1rem; 
+        width: 100%; 
+        max-width: 100%;
+    }
+    .landing-hero { gap: 8px; }
+    .logo { font-size: 1.8rem; }
+    .hero-icon-container { font-size: 2.5rem; }
+    .tagline { font-size: 0.85rem; }
+    .sub-tagline { font-size: 0.7rem; margin-bottom: 20px; }
+    .premium-btn { 
+        padding: 10px 16px; 
+        font-size: 0.85rem; 
+        width: 100%;
+        max-width: 280px;
+    }
+    .chat-container { 
+        height: 100vh; 
+        border-radius: 0;
+        max-width: 100%;
+    }
+    .chat-header { 
+        flex-wrap: wrap; 
+        gap: 0.5rem; 
+        justify-content: center;
+        padding: 0.75rem;
+    }
+    .header-info h2 { font-size: 1rem; }
+    .e2ee-badge { font-size: 0.6rem; }
+    .chat-search-shell { 
+        order: 3; 
+        width: 100%; 
+        max-width: none; 
+        margin: 0;
+        min-width: auto;
+    }
+    .chat-search { padding: 0.25rem 0.5rem; }
+    .header-actions { 
+        flex-wrap: wrap; 
+        gap: 0.4rem; 
+        justify-content: center;
+    }
+    .header-actions .icon-btn {
+        padding: 0.35rem;
+        font-size: 0.95rem;
+    }
+    .header-actions .btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+    }
+    .user-badge { 
+        font-size: 0.75rem; 
+        margin-right: 0.5rem;
+    }
     .chat-body-layout { flex-direction: column; }
-    .participants-drawer { width: 100%; position: relative; transform: none !important; height: auto; }
-    .messages { padding: 1rem; }
-    .message { max-width: 100%; }
-    .chat-input-area { padding: 0.75rem; }
-    .input-action-wrapper { gap: 0.4rem; }
-    #message-input { font-size: 0.9rem; }
-    .icon-btn, .btn { font-size: 0.78rem; }
+    .participants-drawer { 
+        width: 100%; 
+        position: relative; 
+        transform: none !important; 
+        height: auto;
+        max-height: 150px;
+    }
+    .messages { 
+        padding: 0.75rem; 
+        gap: 0.75rem;
+    }
+    .message { 
+        max-width: 95%; 
+        padding: 0.75rem;
+    }
+    .message-text { font-size: 0.85rem; }
+    .chat-input-area { 
+        padding: 0.5rem; 
+    }
+    .input-action-wrapper { 
+        gap: 0.3rem; 
+        padding: 0.15rem;
+    }
+    #message-input { 
+        font-size: 0.85rem; 
+        padding: 0.5rem;
+    }
+    .send-btn {
+        padding: 0.5rem 0.75rem;
+    }
+    .icon-btn, .btn { font-size: 0.75rem; }
+    .settings-content {
+        width: 95%;
+        padding: 1rem;
+    }
+    .theme-grid {
+        flex-direction: column;
+    }
+    .theme-btn {
+        min-width: 100%;
+    }
+    .session-form { padding: 0.5rem; }
+    .form-title { font-size: 1rem; }
+    .input-wrapper { margin-bottom: 0.8rem; }
+    .input-wrapper input {
+        padding: 0.6rem 0.8rem 0.6rem 2.5rem;
+        font-size: 0.85rem;
+    }
+    .button-group {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .button-group .btn {
+        width: 100%;
+    }
+    .main-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .main-buttons .btn {
+        width: 100%;
+    }
+    
+    /* New feature modals responsive */
+    .dm-content, .schedule-content, .edit-content {
+        width: 95%;
+        padding: 1rem;
+    }
+    .reactions-panel {
+        padding: 6px 8px;
+        gap: 2px;
+    }
+    .reaction-btn {
+        font-size: 1rem;
+        padding: 2px;
+    }
+    .pinned-panel {
+        max-height: 150px;
+    }
+    .search-filters {
+        flex-direction: column;
+    }
+    .search-filter-select, .search-filter-date {
+        width: 100%;
+    }
 }
 
 @media (max-width: 600px) {
     .header-info h2 { font-size: 1rem; }
     .e2ee-badge { font-size: 0.62rem; }
     .user-badge { font-size: 0.7rem; }
-    .participants-drawer { display: none; }
+    .participants-drawer { display: block; }
     #toggle-participants { display: inline-flex; }
     .chat-body-layout { flex-direction: column; }
     .input-action-wrapper { padding: 0.15rem; }
@@ -539,9 +749,7 @@ input:focus + i { color: var(--primary); }
     .message-header-row { font-size: 0.7rem; }
     .chat-upload-indicator { font-size: 0.75rem; }
     .settings-content { width: 90%; padding: 1rem; }
-}
-
-    border-top-color: #93A1A1;
+    .intel-grid { grid-template-columns: 1fr; }
 }
 [data-theme="notes"] .send-btn {
     background: #268BD2;
@@ -553,6 +761,10 @@ input:focus + i { color: var(--primary); }
 }
 [data-theme="notes"] .participants-drawer li {
     color: #073642;
+}
+[data-theme="notes"] .search-status,
+[data-theme="notes"] .intel-label {
+    color: #586E75;
 }
 [data-theme="notes"] .quote-block {
     background: rgba(0,0,0,0.05);
@@ -644,6 +856,10 @@ input:focus + i { color: var(--primary); }
     background: #2A3942;
     border-color: #3B4A54;
 }
+[data-theme="whatsapp"] .chat-search {
+    background: #2A3942;
+    border-color: #3B4A54;
+}
 [data-theme="whatsapp"] .chat-input-area {
     background: #1F2C34;
     border-top-color: #2A3942;
@@ -655,6 +871,10 @@ input:focus + i { color: var(--primary); }
 [data-theme="whatsapp"] .participants-drawer {
     background: #111B21;
     border-right-color: #2A3942;
+}
+[data-theme="whatsapp"] .intel-card {
+    background: #1F2C34;
+    border-color: #2A3942;
 }
 [data-theme="whatsapp"] .quote-block {
     background: rgba(0,0,0,0.3);
@@ -715,6 +935,10 @@ input:focus + i { color: var(--primary); }
     background: #111;
     border-color: #444;
 }
+[data-theme="bw"] .chat-search {
+    background: #111;
+    border-color: #444;
+}
 [data-theme="bw"] .chat-input-area {
     background: #000;
     border-top-color: #333;
@@ -735,6 +959,10 @@ input:focus + i { color: var(--primary); }
     background: #0A0A0A;
     border-right-color: #333;
 }
+[data-theme="bw"] .intel-card {
+    background: #111;
+    border-color: #333;
+}
 [data-theme="bw"] .premium-btn {
     background: linear-gradient(45deg, #111, rgba(255,255,255,0.05));
 }
@@ -752,4 +980,436 @@ input:focus + i { color: var(--primary); }
     background-image:
         linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+}
+
+/* ======================================================
+   NEW FEATURES CSS STYLES
+   ====================================================== */
+
+/* Feature 1: Message Reactions */
+.reactions-panel {
+    position: absolute;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 8px 12px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    z-index: 100;
+}
+.reactions-panel.hidden { display: none; }
+.reaction-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+}
+.reaction-btn:hover {
+    transform: scale(1.2);
+    background: rgba(255,255,255,0.1);
+}
+.message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+.message-reaction {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.message-reaction .reaction-count { color: var(--text-muted); }
+
+/* Feature 2: Read Receipts */
+.read-receipt {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-left: 8px;
+}
+.read-receipt.sent { color: var(--text-muted); }
+.read-receipt.delivered { color: var(--primary); }
+.read-receipt.read { color: var(--primary); }
+
+/* Feature 3: DM Mode */
+.dm-content, .schedule-content, .edit-content {
+    background: var(--panel-bg);
+    width: 400px;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--primary);
+}
+.dm-header, .schedule-header, .edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--panel-border);
+}
+.dm-header h3, .schedule-header h3, .edit-header h3 {
+    color: var(--primary);
+    font-family: 'Fira Code', monospace;
+}
+.close-dm, .close-schedule, .close-edit {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+.close-dm:hover, .close-schedule:hover, .close-edit:hover { color: var(--danger); }
+.dm-recipient-select { margin-bottom: 1rem; }
+.dm-recipient-select label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); }
+.dm-recipient-select select {
+    width: 100%;
+    padding: 0.6rem;
+    background: #000;
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    border-radius: 4px;
+}
+.dm-preview {
+    background: rgba(0,255,65,0.1);
+    border: 1px solid var(--primary);
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+.dm-label { font-size: 0.8rem; color: var(--primary); font-family: 'Fira Code', monospace; }
+.dm-badge {
+    background: var(--primary);
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-family: 'Fira Code', monospace;
+}
+.private-message { border-left: 3px solid var(--primary); }
+
+/* Feature 4: Edit & Delete */
+.edit-form textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 0.75rem;
+    background: #000;
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+    resize: vertical;
+    margin-bottom: 1rem;
+}
+.edit-actions { display: flex; gap: 0.5rem; }
+.edit-message-indicator {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Feature 5: File Preview Thumbnails */
+.file-preview-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+.file-thumbnail {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--panel-border);
+}
+.file-thumbnail img, .file-thumbnail video {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+}
+.file-thumbnail-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    padding: 4px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Feature 6: Message Pinning */
+.pinned-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.95);
+    border-bottom: 1px solid var(--primary);
+    z-index: 50;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 1rem;
+}
+.pinned-panel.hidden { display: none; }
+.pinned-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.pinned-header h4 {
+    color: var(--primary);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9rem;
+    margin: 0;
+}
+.pinned-message {
+    background: rgba(0,255,65,0.05);
+    border: 1px solid rgba(0,255,65,0.3);
+    border-radius: 4px;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+.pinned-message:hover { background: rgba(0,255,65,0.1); }
+.pinned-message .pinned-sender {
+    color: var(--primary);
+    font-size: 0.7rem;
+    font-family: 'Fira Code', monospace;
+}
+.pinned-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--primary);
+    color: #000;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.badge-count {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: var(--danger);
+    color: white;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    font-size: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.badge-count.hidden { display: none; }
+
+/* Feature 7: Session Password */
+.password-required {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.password-form {
+    background: var(--panel-bg);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 400px;
+}
+.password-form h3 { color: var(--danger); margin-bottom: 1rem; }
+
+/* Feature 8: Anti-Screenshot */
+.screenshot-warning {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--danger);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    z-index: 300;
+    animation: shake 0.5s infinite;
+    font-family: 'Fira Code', monospace;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(-50%) rotate(0); }
+    25% { transform: translateX(-50%) rotate(-2deg); }
+    75% { transform: translateX(-50%) rotate(2deg); }
+}
+
+/* Feature 9: Scheduled Messages */
+.schedule-form .input-wrapper { flex-direction: column; align-items: stretch; }
+.schedule-form input[type="datetime-local"] {
+    padding: 0.75rem;
+    background: #000;
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    border-radius: 4px;
+}
+
+/* Feature 10: Chat Bots/Commands */
+.bot-response {
+    background: rgba(88,166,255,0.1);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+}
+.bot-response .bot-name { color: var(--accent); font-weight: bold; }
+
+/* Feature 11: Translation */
+.translated-message {
+    border-left: 3px solid var(--accent);
+    padding-left: 0.5rem;
+    margin-top: 0.25rem;
+}
+.translate-btn {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+}
+.translate-btn:hover { text-decoration: underline; }
+.translation-settings .input-wrapper select {
+    width: 100%;
+    padding: 0.6rem;
+    background: #000;
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    border-radius: 4px;
+}
+
+/* Feature 12: Dark/Light Mode */
+.display-mode-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+.mode-btn {
+    flex: 1;
+    padding: 0.75rem;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: 'Fira Code', monospace;
+}
+.mode-btn.active {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+}
+.mode-btn:hover:not(.active) {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Feature 13: User Profiles & Avatars */
+.user-avatar-wrapper {
+    position: relative;
+    width: 28px;
+    height: 28px;
+}
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary);
+}
+.user-avatar.hidden { display: none; }
+#default-avatar-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.9rem;
+    color: var(--primary);
+}
+.avatar-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary);
+    margin-bottom: 1rem;
+}
+.avatar-preview.hidden { display: none; }
+.profile-settings { text-align: center; }
+.avatar-upload { margin-bottom: 1rem; }
+.avatar-upload label {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+}
+.security-settings .input-wrapper { flex-direction: column; }
+.security-settings input { width: 100%; }
+
+/* Feature 15: Advanced Search */
+.search-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+.search-filters.hidden { display: none; }
+.search-filter-select, .search-filter-date {
+    padding: 0.4rem;
+    background: #000;
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.search-filter-select { min-width: 80px; }
+.search-filter-date { width: 110px; }
+
+/* P2P Status Indicator */
+.p2p-connected { color: var(--success) !important; }
+.p2p-connecting { color: #ffbc42 !important; }
+.p2p-disconnected { color: var(--danger) !important; }
+
+/* Key Rotation */
+.key-rotation-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    z-index: 250;
+    font-family: 'Fira Code', monospace;
 }

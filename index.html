@@ -48,15 +48,75 @@
         <div class="landing-page secure-panel" id="landing-page">
             <!-- Settings shortcut on landing page -->
             <button class="landing-settings-btn icon-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
-            <!-- Sleek Splash Hero Intro -->
+            <!-- New Hero Intro -->
             <div id="landing-hero" class="landing-hero fade-in">
-                <div class="hero-icon-container">
-                    <i class="fa-solid fa-earth-americas fa-spin-pulse"></i>
+                <div class="landing-copy">
+                    <div class="landing-kicker">
+                        <span class="signal-dot"></span>
+                        Sovereign browser-to-browser messaging
+                    </div>
+                    <h1 class="logo glow-text">CipherNet</h1>
+                    <p class="landing-title">Private rooms, direct transport, zero server-side message storage.</p>
+                    <p class="landing-subtitle">Spin up a secure room in seconds, share a session key, and move text, voice, and files across a live peer network.</p>
+
+                    <div class="landing-actions">
+                        <button id="start-hero-btn" class="btn premium-btn cyber-hover">Launch Session Flow <i class="fa-solid fa-arrow-right"></i></button>
+                        <button id="show-join-form-hero" class="btn secondary-btn landing-secondary"><i class="fa-solid fa-link"></i> Quick Join</button>
+                    </div>
+
+                    <div class="landing-feature-grid">
+                        <div class="landing-feature-card">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <strong>Encrypted by Default</strong>
+                            <span>AES-GCM room encryption with ephemeral browser state.</span>
+                        </div>
+                        <div class="landing-feature-card">
+                            <i class="fa-solid fa-bolt"></i>
+                            <strong>Realtime P2P</strong>
+                            <span>WebRTC data channels for direct file and media transfer.</span>
+                        </div>
+                        <div class="landing-feature-card">
+                            <i class="fa-solid fa-fire-flame-curved"></i>
+                            <strong>Burn After Read</strong>
+                            <span>Self-destruct messaging and local-only screen wipes.</span>
+                        </div>
+                    </div>
                 </div>
-                <h1 class="logo glow-text">CipherNet</h1>
-                <p class="tagline">Decentralized. Untraceable. Peer-to-Peer.</p>
-                <p class="sub-tagline">Enter the secure network protocol.</p>
-                <button id="start-hero-btn" class="btn premium-btn cyber-hover">INITIALIZE PROTOCOL <i class="fa-solid fa-arrow-right"></i></button>
+
+                <div class="landing-preview">
+                    <div class="preview-orb"></div>
+                    <div class="preview-panel">
+                        <div class="preview-header">
+                            <span class="preview-pill"><i class="fa-solid fa-lock"></i> Encrypted Tunnel</span>
+                            <span class="preview-pill"><i class="fa-solid fa-satellite-dish"></i> WebRTC Live</span>
+                        </div>
+
+                        <div class="preview-terminal">
+                            <div class="terminal-line"><span class="terminal-label">STATUS</span><span class="terminal-value">READY FOR HANDSHAKE</span></div>
+                            <div class="terminal-line"><span class="terminal-label">ROUTE</span><span class="terminal-value">BROWSER > PEER > BROWSER</span></div>
+                            <div class="terminal-line"><span class="terminal-label">RETENTION</span><span class="terminal-value">LOCAL SESSION MEMORY</span></div>
+                        </div>
+
+                        <div class="preview-stats">
+                            <div class="preview-stat">
+                                <strong>Text</strong>
+                                <span>Searchable local history</span>
+                            </div>
+                            <div class="preview-stat">
+                                <strong>Voice</strong>
+                                <span>Press-hold instant memos</span>
+                            </div>
+                            <div class="preview-stat">
+                                <strong>Files</strong>
+                                <span>Direct encrypted payload streaming</span>
+                            </div>
+                        </div>
+
+                        <div class="preview-footer">
+                            <span>Host a node or attach to an active room with one code.</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Session Flow (Hidden by default until Hero clicked) -->
@@ -132,18 +192,58 @@
                     <h2><i class="fa-solid fa-bolt"></i> P2P Active</h2>
                     <span class="e2ee-badge" title="No centralized storage. Data flows directly between browsers."><i class="fa-solid fa-satellite-dish"></i> WebRTC Data Channel</span>
                 </div>
+                <div class="chat-search-shell">
+                    <div class="chat-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" id="message-search" placeholder="Search transmissions...">
+                        <button id="clear-search" class="icon-btn search-clear hidden" title="Clear Search"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <!-- Advanced Search Filters (Feature 15) -->
+                    <div id="search-filters" class="search-filters hidden">
+                        <select id="filter-user" class="search-filter-select">
+                            <option value="">All Users</option>
+                        </select>
+                        <select id="filter-type" class="search-filter-select">
+                            <option value="">All Types</option>
+                            <option value="text">Text</option>
+                            <option value="image">Images</option>
+                            <option value="file">Files</option>
+                        </select>
+                        <input type="date" id="filter-date-start" class="search-filter-date" title="From Date">
+                        <input type="date" id="filter-date-end" class="search-filter-date" title="To Date">
+                    </div>
+                    <span id="search-status" class="search-status hidden">0 matches</span>
+                </div>
                 <!-- Actions -->
                 <div class="header-actions">
                     <button id="open-settings" class="icon-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
                     <button id="toggle-participants" class="icon-btn" title="View Nodes"><i class="fa-solid fa-users"></i></button>
+                    <button id="pin-message" class="icon-btn" title="Pinned Messages"><i class="fa-solid fa-thumbtack"></i><span id="pin-count" class="badge-count hidden">0</span></button>
                     <button id="toggle-sound" class="icon-btn active-icon" title="Toggle Sound"><i class="fa-solid fa-volume-high"></i></button>
                     <button id="toggle-notifs" class="icon-btn" title="Browser Notifications"><i class="fa-solid fa-bell-slash"></i></button>
+                    <button id="toggle-dm" class="icon-btn" title="Private Messages"><i class="fa-solid fa-lock"></i></button>
+                    <button id="rotate-keys" class="icon-btn" title="Rotate Encryption Keys"><i class="fa-solid fa-key"></i></button>
                     <button id="export-chat" class="icon-btn" title="Export Log"><i class="fa-solid fa-download"></i></button>
                     <button id="clear-screen" class="icon-btn" title="Wipe Local Screen"><i class="fa-solid fa-broom"></i></button>
                     
-                    <span id="current-user-display" class="user-badge"><i class="fa-solid fa-terminal"></i> <span id="current-user-name">Alias</span></span>
+                    <span id="current-user-display" class="user-badge">
+                        <div class="user-avatar-wrapper">
+                            <img id="user-avatar" class="user-avatar hidden" src="" alt="Avatar">
+                            <i id="default-avatar-icon" class="fa-solid fa-terminal"></i>
+                        </div>
+                        <span id="current-user-name">Alias</span>
+                    </span>
                     <button id="exit-chat" class="btn danger-btn"><i class="fa-solid fa-power-off"></i> Terminate</button>
                 </div>
+            </div>
+            
+            <!-- Pinned Messages Panel (Feature 6) -->
+            <div id="pinned-panel" class="pinned-panel hidden">
+                <div class="pinned-header">
+                    <h4><i class="fa-solid fa-thumbtack"></i> Pinned Messages</h4>
+                    <button id="close-pinned" class="icon-btn"><i class="fa-solid fa-times"></i></button>
+                </div>
+                <div id="pinned-messages-list"></div>
             </div>
 
             <!-- Main Layout (List + Messages) -->
@@ -151,6 +251,33 @@
                 <!-- Participants Drawer -->
                 <div id="participants-drawer" class="participants-drawer hidden">
                     <h3>Active Nodes (<span id="node-count">1</span>)</h3>
+                    <div class="session-intel">
+                        <div class="intel-card">
+                            <span class="intel-label">Session</span>
+                            <div class="intel-inline">
+                                <code id="session-code-display">--------</code>
+                                <button id="copy-session-code" class="icon-btn" title="Copy Session Code"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                        </div>
+                        <div class="intel-grid">
+                            <div class="intel-card">
+                                <span class="intel-label">Role</span>
+                                <strong id="session-role">Guest</strong>
+                            </div>
+                            <div class="intel-card">
+                                <span class="intel-label">Messages</span>
+                                <strong id="message-count">0</strong>
+                            </div>
+                            <div class="intel-card">
+                                <span class="intel-label">P2P</span>
+                                <strong id="p2p-status">Standby</strong>
+                            </div>
+                            <div class="intel-card">
+                                <span class="intel-label">Draft</span>
+                                <strong id="draft-status">Empty</strong>
+                            </div>
+                        </div>
+                    </div>
                     <ul id="participants-list">
                         <!-- Populated dynamically -->
                     </ul>
@@ -226,7 +353,149 @@
                     <button class="theme-btn" data-color="whatsapp"><span class="color-dot" style="background:#25D366;"></span> WhatsApp Classic</button>
                 </div>
             </div>
+
+            <div class="settings-section">
+                <h3>Shortcuts</h3>
+                <p class="settings-note">Use <code>/clear</code> to wipe the local chat view, <code>/burn</code> to toggle self-destruct mode, and <code>Ctrl/Cmd + K</code> to jump to search.</p>
+            </div>
+
+            <!-- Feature 12: Dark/Light Mode Toggle -->
+            <div class="settings-section">
+                <h3>Display Mode</h3>
+                <div class="display-mode-toggle">
+                    <button id="mode-dark" class="mode-btn active"><i class="fa-solid fa-moon"></i> Dark</button>
+                    <button id="mode-light" class="mode-btn"><i class="fa-solid fa-sun"></i> Light</button>
+                </div>
+            </div>
+
+            <!-- Feature 13: User Profile -->
+            <div class="settings-section">
+                <h3>Profile Settings</h3>
+                <div class="profile-settings">
+                    <div class="avatar-upload">
+                        <img id="profile-avatar-preview" class="avatar-preview" src="" alt="Avatar">
+                        <label for="avatar-upload-input" class="btn secondary-btn"><i class="fa-solid fa-camera"></i> Upload Avatar</label>
+                        <input type="file" id="avatar-upload-input" accept="image/*" class="hidden">
+                    </div>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-pen"></i>
+                        <input type="text" id="profile-display-name" placeholder="Display Name">
+                    </div>
+                    <button id="save-profile" class="btn primary-btn"><i class="fa-solid fa-save"></i> Save Profile</button>
+                </div>
+            </div>
+
+            <!-- Feature 11: Translation Settings -->
+            <div class="settings-section">
+                <h3>Translation</h3>
+                <div class="translation-settings">
+                    <label class="custom-checkbox">
+                        <input type="checkbox" id="auto-translate">
+                        <span class="checkmark"></span>
+                        Auto-translate messages
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-language"></i>
+                        <select id="preferred-language">
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="it">Italian</option>
+                            <option value="pt">Portuguese</option>
+                            <option value="ru">Russian</option>
+                            <option value="zh">Chinese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                            <option value="ar">Arabic</option>
+                            <option value="hi">Hindi</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 7: Session Password -->
+            <div class="settings-section">
+                <h3>Session Security</h3>
+                <div class="security-settings">
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="session-password" placeholder="Set Session Password (Optional)">
+                    </div>
+                    <button id="set-password" class="btn secondary-btn"><i class="fa-solid fa-shield-halved"></i> Set Password</button>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- DM Modal (Feature 3: Private Messages) -->
+    <div id="dm-modal" class="image-modal hidden">
+        <div class="modal-content dm-content">
+            <div class="dm-header">
+                <h3><i class="fa-solid fa-lock"></i> Private Message</h3>
+                <span class="close-dm">&times;</span>
+            </div>
+            <div class="dm-recipient-select">
+                <label>Send to:</label>
+                <select id="dm-recipient">
+                    <option value="">Select recipient...</option>
+                </select>
+            </div>
+            <div class="dm-preview">
+                <span class="dm-label">Your message will be encrypted for recipient only</span>
+            </div>
+            <button id="start-dm" class="btn primary-btn"><i class="fa-solid fa-paper-plane"></i> Start DM</button>
+        </div>
+    </div>
+
+    <!-- Scheduled Messages Modal (Feature 9) -->
+    <div id="schedule-modal" class="image-modal hidden">
+        <div class="modal-content schedule-content">
+            <div class="schedule-header">
+                <h3><i class="fa-solid fa-clock"></i> Schedule Message</h3>
+                <span class="close-schedule">&times;</span>
+            </div>
+            <div class="schedule-form">
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-calendar"></i>
+                    <input type="datetime-local" id="schedule-datetime">
+                </div>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-message"></i>
+                    <input type="text" id="schedule-message" placeholder="Message to send...">
+                </div>
+                <button id="schedule-send" class="btn primary-btn"><i class="fa-solid fa-alarm-clock"></i> Schedule</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Edit Modal (Feature 4) -->
+    <div id="edit-modal" class="image-modal hidden">
+        <div class="modal-content edit-content">
+            <div class="edit-header">
+                <h3><i class="fa-solid fa-pen"></i> Edit Message</h3>
+                <span class="close-edit">&times;</span>
+            </div>
+            <div class="edit-form">
+                <textarea id="edit-message-text" placeholder="Edit your message..."></textarea>
+                <div class="edit-actions">
+                    <button id="save-edit" class="btn primary-btn"><i class="fa-solid fa-save"></i> Save</button>
+                    <button id="delete-message" class="btn danger-btn"><i class="fa-solid fa-trash"></i> Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reactions Panel (Feature 1) -->
+    <div id="reactions-panel" class="reactions-panel hidden">
+        <button class="reaction-btn" data-reaction="👍">👍</button>
+        <button class="reaction-btn" data-reaction="❤️">❤️</button>
+        <button class="reaction-btn" data-reaction="😂">😂</button>
+        <button class="reaction-btn" data-reaction="😮">😮</button>
+        <button class="reaction-btn" data-reaction="😢">😢</button>
+        <button class="reaction-btn" data-reaction="🔥">🔥</button>
+        <button class="reaction-btn" data-reaction="🎉">🎉</button>
+        <button class="reaction-btn" data-reaction="👏">👏</button>
     </div>
 
     <!-- Image Modal -->
