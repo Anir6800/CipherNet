@@ -6,6 +6,7 @@
     <title>CipherNet - Decentralized Secure Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
     <link rel="stylesheet" href="styles.css">
     <style>
         /* Base styles for emoji picker web component */
@@ -164,6 +165,20 @@
                     </div>
                 </div>
 
+                <!-- Create Success Panel -->
+                <div id="create-success-panel" class="hidden inner-panel slide-up">
+                    <h3 class="form-title">Session Ready</h3>
+                    <div class="success-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <p class="success-msg">Genesis block initialized. Share this initialization vector with your peer.</p>
+                    <div class="code-display-box">
+                        <code id="success-session-code">--------</code>
+                        <button id="copy-success-code" class="icon-btn" title="Copy Code"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                    <div class="button-group">
+                        <button id="join-created-session" class="btn primary-btn cyber-hover"><i class="fa-solid fa-plug"></i> Connect to Node</button>
+                    </div>
+                </div>
+
                 <!-- Join Session -->
                 <div id="join-session-form" class="hidden inner-panel slide-up">
                     <h3 class="form-title">Connect to Network</h3>
@@ -222,6 +237,8 @@
                     <button id="toggle-sound" class="icon-btn active-icon" title="Toggle Sound"><i class="fa-solid fa-volume-high"></i></button>
                     <button id="toggle-notifs" class="icon-btn" title="Browser Notifications"><i class="fa-solid fa-bell-slash"></i></button>
                     <button id="toggle-dm" class="icon-btn" title="Private Messages"><i class="fa-solid fa-lock"></i></button>
+                    <button id="share-session" class="icon-btn" title="Share Room"><i class="fa-solid fa-share-nodes"></i></button>
+                    <button id="open-coder-utils" class="icon-btn" title="Coder Utilities"><i class="fa-solid fa-code"></i></button>
                     <button id="rotate-keys" class="icon-btn" title="Rotate Encryption Keys"><i class="fa-solid fa-key"></i></button>
                     <button id="export-chat" class="icon-btn" title="Export Log"><i class="fa-solid fa-download"></i></button>
                     <button id="clear-screen" class="icon-btn" title="Wipe Local Screen"><i class="fa-solid fa-broom"></i></button>
@@ -508,7 +525,54 @@
         <img class="modal-content" id="modal-img">
     </div>
 
+    <!-- Share Room Modal -->
+    <div id="share-modal" class="image-modal hidden">
+        <div class="modal-content settings-content share-modal-content">
+            <div class="settings-header">
+                <h2><i class="fa-solid fa-share-nodes"></i> Share Room</h2>
+                <span class="close-share-modal">&times;</span>
+            </div>
+            <div class="share-info">
+                <p>Provide this Initialization Vector to your peer to establish a secure P2P handshake.</p>
+                <div class="code-display-large">
+                    <code id="share-session-code">--------</code>
+                    <button id="copy-share-code" class="icon-btn" title="Copy Code"><i class="fa-regular fa-copy"></i></button>
+                </div>
+                <div class="share-actions">
+                    <button id="copy-share-link" class="btn secondary-btn"><i class="fa-solid fa-link"></i> Copy Invite Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coder Utilities Modal -->
+    <div id="coder-utils-modal" class="image-modal hidden">
+        <div class="modal-content settings-content utils-content">
+            <div class="settings-header">
+                <h2><i class="fa-solid fa-terminal"></i> Coder Utilities</h2>
+                <span class="close-utils-modal">&times;</span>
+            </div>
+            <div class="utils-body">
+                <div class="utils-tabs">
+                    <button class="util-tab active" data-tab="base64">Base64</button>
+                    <button class="util-tab" data-tab="json">JSON</button>
+                    <button class="util-tab" data-tab="url">URL</button>
+                    <button class="util-tab" data-tab="hash">Hash</button>
+                </div>
+                <div class="util-content">
+                    <textarea id="util-input" placeholder="Enter input here..."></textarea>
+                    <div class="util-actions">
+                        <button id="util-process" class="btn primary-btn">Process</button>
+                        <button id="util-copy" class="btn secondary-btn">Copy Result</button>
+                    </div>
+                    <textarea id="util-output" readonly placeholder="Result will appear here..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- WebRTC Adatper (optional safety net for older browsers, though native is fine now) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script type="module" src="app.js"></script>

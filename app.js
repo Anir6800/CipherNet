@@ -287,6 +287,10 @@ const draftStatusDisplay = document.getElementById('draft-status');
 const messageSearchInput = document.getElementById('message-search');
 const searchStatus = document.getElementById('search-status');
 const clearSearchBtn = document.getElementById('clear-search');
+const createSuccessPanel = document.getElementById('create-success-panel');
+const successSessionCode = document.getElementById('success-session-code');
+const shareModal = document.getElementById('share-modal');
+const shareSessionCode = document.getElementById('share-session-code');
 
 // Globals
 let currentSessionId = null;
@@ -837,11 +841,35 @@ document.getElementById('create-session').addEventListener('click', async () => 
         currentCryptoKey = await deriveKey(sessionCode);
         isHost = true;
         
-        alert(`Session created.\nKEY: ${sessionCode}`);
-        initializeChat(sessionCode);
+        // Update Success Panel instead of alert
+        successSessionCode.textContent = sessionCode;
+        document.getElementById('create-session-form').classList.add('hidden');
+        createSuccessPanel.classList.remove('hidden');
+        
+        // Store for later join
+        window._pendingSessionCode = sessionCode;
+        
+        // initializeChat(sessionCode); // Don't jump to chat yet, show success first
     } catch (e) {
         console.error(e); alert('Init failed');
     }
+});
+
+document.getElementById('join-created-session').addEventListener('click', () => {
+    if (window._pendingSessionCode) {
+        initializeChat(window._pendingSessionCode);
+        createSuccessPanel.classList.add('hidden');
+        document.getElementById('session-form-container').classList.add('hidden');
+    }
+});
+
+document.getElementById('copy-success-code').addEventListener('click', async () => {
+    const code = successSessionCode.textContent;
+    await navigator.clipboard.writeText(code);
+    const btn = document.getElementById('copy-success-code');
+    const oldIcon = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+    setTimeout(() => btn.innerHTML = oldIcon, 2000);
 });
 
 document.getElementById('join-session').addEventListener('click', async () => {
@@ -1032,6 +1060,51 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
+// Share Session Logic
+document.getElementById('share-session').addEventListener('click', () => {
+    if (!currentSessionId) return;
+    shareSessionCode.textContent = currentSessionId;
+    shareModal.classList.remove('hidden');
+    shareModal.classList.add('show');
+});
+
+document.querySelector('.close-share-modal').addEventListener('click', () => {
+    shareModal.classList.remove('show');
+    shareModal.classList.add('hidden');
+});
+
+document.getElementById('copy-share-code').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(currentSessionId);
+    const btn = document.getElementById('copy-share-code');
+    const oldIcon = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+    setTimeout(() => btn.innerHTML = oldIcon, 2000);
+});
+
+document.getElementById('copy-share-link').addEventListener('click', async () => {
+    const url = window.location.origin + window.location.pathname + '#room=' + currentSessionId;
+    await navigator.clipboard.writeText(url);
+    const btn = document.getElementById('copy-share-link');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Link Copied!';
+    setTimeout(() => btn.innerHTML = oldText, 2000);
+});
+
+// Auto-join via hash
+window.addEventListener('load', () => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#room=')) {
+        const code = hash.split('=')[1];
+        if (code) {
+            document.getElementById('landing-hero').classList.add('hidden');
+            document.getElementById('session-form-container').classList.remove('hidden');
+            document.getElementById('main-buttons').classList.add('hidden');
+            document.getElementById('join-session-form').classList.remove('hidden');
+            document.getElementById('session-code').value = code;
+        }
+    }
+});
+
 // Emoji Picker Logic
 const emojiPicker = document.querySelector('emoji-picker');
 const toggleEmojiBtn = document.getElementById('toggle-emoji');
@@ -1188,10 +1261,67 @@ async function handleIncomingMessage(encDetails, dbKey) {
         messageElement.appendChild(quoteDiv);
     }
 
-    // Body
+    // Body - Advanced Code Block Support
     const messageText = document.createElement('div');
     messageText.classList.add('message-text');
-    messageText.textContent = text;
+    
+    const codeBlockRegex = /```(\w+)?\n([\s\S]+?)\n```/g;
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+        // Append text before code block
+        if (match.index > lastIndex) {
+            const plainText = document.createTextNode(text.substring(lastIndex, match.index));
+            messageText.appendChild(plainText);
+        }
+        
+        const lang = match[1] || 'auto';
+        const code = match[2];
+        
+        const container = document.createElement('div');
+        container.classList.add('code-block-container');
+        
+        const header = document.createElement('div');
+        header.classList.add('code-header');
+        
+        // Auto-detect if not specified
+        const highlighted = lang === 'auto' ? hljs.highlightAuto(code) : hljs.highlight(code, { language: lang });
+        const detectedLang = highlighted.language || lang;
+        
+        header.innerHTML = `
+            <span class="code-lang">Language: ${detectedLang}</span>
+            <button class="copy-code-btn"><i class="fa-regular fa-copy"></i> Copy</button>
+        `;
+        
+        const pre = document.createElement('pre');
+        const codeElem = document.createElement('code');
+        codeElem.classList.add('hljs', `language-${detectedLang}`);
+        codeElem.innerHTML = highlighted.value;
+        
+        pre.appendChild(codeElem);
+        container.appendChild(header);
+        container.appendChild(pre);
+        messageText.appendChild(container);
+        
+        // Copy functionality for the specific block
+        header.querySelector('.copy-code-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await navigator.clipboard.writeText(code);
+            const btn = e.currentTarget;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+            setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy', 2000);
+        });
+        
+        lastIndex = codeBlockRegex.lastIndex;
+    }
+    
+    // Append remaining text
+    if (lastIndex < text.length) {
+        const remainingText = document.createTextNode(text.substring(lastIndex));
+        messageText.appendChild(remainingText);
+    }
+    
     messageElement.appendChild(messageText);
     
     messagesDiv.appendChild(messageElement);
@@ -1301,9 +1431,105 @@ async function cleanupSession() {
     }
 }
 
-// ======================================================
-// NEW FEATURES IMPLEMENTATION
-// ======================================================
+// ----------------------------------------------------
+// MAINTENANCE LOGIC (24h Deletion)
+// ----------------------------------------------------
+async function runMaintenance() {
+    console.log('Running maintenance check...');
+    const sessionsRef = ref(database, 'sessions');
+    const snapshot = await get(sessionsRef);
+    if (!snapshot.exists()) return;
+
+    const now = Date.now();
+    const sessions = snapshot.val();
+    
+    for (const sessionId in sessions) {
+        const session = sessions[sessionId];
+        // If session has an expiry, or if it's been inactive for > 24h
+        const lastActive = session.last_active || 0;
+        const expiry = session.expiry_timestamp || 0;
+        
+        if ((expiry > 0 && now > expiry) || (lastActive > 0 && now - lastActive > 86400000)) {
+            console.log(`Cleaning up expired session: ${sessionId}`);
+            await remove(ref(database, `messages/${sessionId}`));
+            await remove(ref(database, `sessions/${sessionId}`));
+        }
+    }
+}
+
+// Update last active on session actions
+async function touchSession() {
+    if (currentSessionId && isHost) {
+        await set(ref(database, `sessions/${currentSessionId}/last_active`), Date.now());
+    }
+}
+
+// ----------------------------------------------------
+// CODER UTILITIES LOGIC
+// ----------------------------------------------------
+const coderUtilsModal = document.getElementById('coder-utils-modal');
+const utilTabs = document.querySelectorAll('.util-tab');
+const utilInput = document.getElementById('util-input');
+const utilOutput = document.getElementById('util-output');
+let activeUtilTab = 'base64';
+
+document.getElementById('open-coder-utils').addEventListener('click', () => {
+    coderUtilsModal.classList.remove('hidden');
+    coderUtilsModal.classList.add('show');
+});
+
+document.querySelector('.close-utils-modal').addEventListener('click', () => {
+    coderUtilsModal.classList.remove('show');
+    coderUtilsModal.classList.add('hidden');
+});
+
+utilTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        utilTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeUtilTab = tab.dataset.tab;
+        utilInput.placeholder = `Enter ${activeUtilTab.toUpperCase()} input...`;
+    });
+});
+
+document.getElementById('util-process').addEventListener('click', async () => {
+    const input = utilInput.value.trim();
+    if (!input) return;
+
+    try {
+        let result = '';
+        switch (activeUtilTab) {
+            case 'base64':
+                try {
+                    result = btoa(input); // Encode by default
+                } catch {
+                    result = atob(input); // Try decode if encode fails
+                }
+                break;
+            case 'json':
+                result = JSON.stringify(JSON.parse(input), null, 4);
+                break;
+            case 'url':
+                result = encodeURIComponent(input);
+                break;
+            case 'hash':
+                const msgBuffer = new TextEncoder().encode(input);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                result = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+                break;
+        }
+        utilOutput.value = result;
+    } catch (e) {
+        utilOutput.value = 'Error: ' + e.message;
+    }
+});
+
+document.getElementById('util-copy').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(utilOutput.value);
+    const btn = document.getElementById('util-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Result', 2000);
+});
 
 // Feature 1: Message Reactions
 const reactionsPanel = document.getElementById('reactions-panel');
@@ -1921,6 +2147,7 @@ function updateUserFilter() {
 // Initialize new features
 window.addEventListener('DOMContentLoaded', () => {
     initScreenshotDetection();
+    runMaintenance(); // Run cleanup on load
     
     // Add keyboard shortcut for scheduling
     messageInput.addEventListener('keydown', (e) => {
